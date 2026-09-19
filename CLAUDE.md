@@ -31,7 +31,11 @@ steps to the [Superpowers](https://github.com/obra/superpowers-marketplace) plug
 - **`before_implement`** (mandatory hook, `optional: false`) → `speckit.superpowers-bridge.tdd-implement`
   → Superpowers `subagent-driven-development` + `test-driven-development`. Executes `tasks.md`
   with a fresh implementer subagent per task, strict RED-GREEN-REFACTOR, and a task-scoped
-  reviewer subagent before a task is marked `[X]`.
+  reviewer subagent before a task is marked `[X]`. For a task marked **`[UI]`** in `tasks.md`
+  (creates/modifies a page or component under `frontend/`), the dispatched subagent must
+  *also* invoke the `impeccable` skill (`.agents/skills/impeccable/`) for the visual/UX/
+  accessibility work, alongside — not instead of — TDD: `impeccable` governs craft quality,
+  `test-driven-development` still governs testable behavior.
 
 Do not run `/speckit-implement` expecting it to write code in the current context — it hands
 off to the hook above, which dispatches subagents. Subagents never inherit this session's

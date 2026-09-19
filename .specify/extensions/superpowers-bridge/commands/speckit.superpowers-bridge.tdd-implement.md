@@ -29,6 +29,18 @@ RED-GREEN-REFACTOR, and a two-stage review after each task.
    - An instruction to follow the Superpowers `test-driven-development` skill:
      write a failing test first, watch it fail, then write the minimal code to
      pass. No production code without a failing test first.
+   - **If the task creates or modifies a graphical user interface** (a page or
+     component file under `frontend/`, e.g. anything the task labels
+     "Frontend:" or touching `frontend/app/`, `frontend/components/`,
+     `frontend/services/*.tsx`), an additional instruction to invoke the
+     `impeccable` skill for the UI/UX/visual work — run its `shape` command
+     (or let its own routing pick `new-work` for a new surface) before
+     writing UI code, and follow its craft-floor quality bar while
+     implementing. This runs alongside TDD, not instead of it: `impeccable`
+     governs visual/UX craft and accessibility; `test-driven-development`
+     still governs the task's testable behavior (component rendering,
+     interactions, API calls). A subagent working a UI task without invoking
+     `impeccable` has not correctly executed the task.
 4. After each subagent completes, run the task review (spec compliance + code
    quality) that `subagent-driven-development` prescribes before marking the
    task `[X]` in `tasks.md`.

@@ -3,7 +3,7 @@ schema_version: "1.0"
 extension:
   id: superpowers-bridge
   name: "Superpowers Bridge"
-  version: "0.1.0"
+  version: "0.2.0"
   description: "Delegates spec refinement to Superpowers brainstorming and implementation to Superpowers TDD + subagent-driven-development"
   author: "Wissem Hamza"
   license: MIT

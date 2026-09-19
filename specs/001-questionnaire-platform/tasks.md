@@ -151,13 +151,51 @@ non-répondants et la relance pour un questionnaire privé (quickstart.md Scéna
 
 ---
 
-## Phase 6: Polish & Cross-Cutting Concerns
+## Phase 6: Déploiement V1 (managé — Vercel + Strapi Cloud)
 
-- [ ] T051 [P] Write `backend/Dockerfile` and `frontend/Dockerfile` (Principe III — S5-S7)
-- [ ] T052 [P] Write initial CI pipeline (`.gitlab-ci.yml` or `Jenkinsfile`) running lint + tests on push (Principe III — S4, S8-S10)
-- [ ] T053 [P] Write Kubernetes manifests (Deployment + Service for backend/frontend, readiness/liveness probe on `GET /health`) in `k8s/` (Principe III/V — S11)
-- [ ] T054 Run quickstart.md end-to-end validation against a local docker-compose stack
-- [ ] T055 Security hardening pass: confirm no secret committed, `.env.example` matches `.gitignore` coverage (Principe IV)
+**Purpose**: Mettre le projet en ligne rapidement sur des plateformes managées, per constitution
+v1.1.0 et plan.md Target Platform (amendement 2026-09-19 (c)). C'est la cible de référence
+courante — la Phase 7 (Docker/CI/Kubernetes) est une migration ultérieure, pas un prérequis.
+
+- [ ] T051 [P] Configure Vercel project for `frontend/`: link the Git repository, verify the
+  auto-detected Next.js build (`next build`), connect the production deploy to the main branch
+- [ ] T052 [P] Configure Strapi Cloud project for `backend/`: link the Git repository, enable
+  the managed PostgreSQL add-on, verify the build/deploy pipeline triggers on push
+- [ ] T053 Configure production environment variables in the Vercel and Strapi Cloud dashboards
+  (DB connection, JWT secret, SMTP credentials — FR-017, API base URL) per `.env.example` (T005)
+  — no secret committed to the repo (Principe IV)
+- [ ] T054 [P] Configure a custom domain (or platform subdomain) for the Vercel deployment and
+  verify the frontend reaches the Strapi Cloud API in production (`GET /health` from T008
+  reachable publicly)
+
+**Checkpoint**: V1 en ligne sur Vercel + Strapi Cloud — utilisable pour un vrai questionnaire de
+fin de séance.
+
+---
+
+## Phase 7: Migration auto-hébergée (Docker / CI / Kubernetes — S5-S11, ultérieure)
+
+**Purpose**: Objectif pédagogique du module (constitution, "Contraintes Techniques et
+Pédagogiques") — introduit progressivement selon le calendrier de séances, comme migration
+depuis la V1 managée (Phase 6), pas comme condition pour livrer V1.
+
+- [ ] T055 [P] Write `backend/Dockerfile` and `frontend/Dockerfile` (Principe III — S5-S7)
+- [ ] T056 [P] Write initial CI pipeline (`.gitlab-ci.yml` or `Jenkinsfile`) running lint + tests on push (Principe III — S4, S8-S10)
+- [ ] T057 [P] Write Kubernetes manifests (Deployment + Service for backend/frontend, readiness/liveness probe on `GET /health`) in `k8s/` (Principe III/V — S11)
+
+**Checkpoint**: Déploiement auto-hébergé disponible en parallèle de V1, pour la démonstration
+pédagogique Docker/CI/Kubernetes du module.
+
+---
+
+## Phase 8: Polish & Cross-Cutting Concerns
+
+- [ ] T058 Run quickstart.md end-to-end validation against the live V1 deployment (Vercel +
+  Strapi Cloud) — update quickstart.md prerequisites/URLs if they still assume only a local
+  docker-compose stack
+- [ ] T059 Security hardening pass: confirm no secret committed, `.env.example` matches
+  `.gitignore` coverage, and Vercel/Strapi Cloud dashboard environment variables reviewed
+  (Principe IV)
 
 ---
 
@@ -171,7 +209,13 @@ non-répondants et la relance pour un questionnaire privé (quickstart.md Scéna
   dépend de US1 pour disposer d'un questionnaire publié à tester mais son code (T025-T039) est
   indépendant des fichiers de US1 ; US3 dépend de données produites par US1+US2 pour être
   démontrée mais son code (T040-T050) est indépendant.
-- **Polish (Phase 6)**: dépend de l'achèvement des user stories voulues.
+- **Déploiement V1 (Phase 6)**: dépend de l'achèvement d'au moins US1 (idéalement les trois user
+  stories) pour avoir quelque chose à déployer. Indépendante de la Phase 7.
+- **Migration auto-hébergée (Phase 7)**: indépendante de la Phase 6 — peut démarrer dès que
+  Foundational est prêt, en parallèle de V1, selon le calendrier de séances S5-S11. Ne bloque
+  pas et n'est pas bloquée par la Phase 6.
+- **Polish (Phase 8)**: dépend de l'achèvement de la Phase 6 (T058 valide le déploiement V1 en
+  ligne) ; ne dépend pas de la Phase 7.
 
 ### Parallel Opportunities
 
@@ -180,7 +224,9 @@ non-répondants et la relance pour un questionnaire privé (quickstart.md Scéna
 - Tests T011-T015 (US1) en parallèle entre eux ; T016, T017 (modèles US1) en parallèle.
 - Tests T025-T030 (US2) en parallèle ; T031, T032, T033 (modèles US2) en parallèle.
 - Tests T040-T044 (US3) en parallèle.
-- T051, T052, T053 (Polish) en parallèle.
+- T051, T052, T054 (Déploiement V1) en parallèle ; T053 dépend de T051+T052.
+- T055, T056, T057 (Migration auto-hébergée) en parallèle entre elles, et en parallèle de la
+  Phase 6.
 
 ---
 
@@ -197,5 +243,8 @@ non-répondants et la relance pour un questionnaire privé (quickstart.md Scéna
 2. US1 → validation indépendante → démo (MVP).
 3. US2 → validation indépendante → démo.
 4. US3 → validation indépendante → démo.
-5. Polish (Phase 6), avec progression Docker/CI/Kubernetes alignée sur le calendrier de séances
-   de la constitution.
+5. Déploiement V1 (Phase 6) → mise en ligne réelle sur Vercel + Strapi Cloud, utilisable pour
+   les questionnaires de fin de séance dès que possible.
+6. Migration auto-hébergée (Phase 7), en parallèle et selon le calendrier de séances S5-S11 de
+   la constitution — n'attend pas la fin de la Phase 6.
+7. Polish (Phase 8), après validation du déploiement V1 en ligne.

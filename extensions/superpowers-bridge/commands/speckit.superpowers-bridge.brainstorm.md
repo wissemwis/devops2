@@ -23,18 +23,23 @@ jumping straight to a spec document.
 
 ## Constraints — override brainstorming's default hand-off
 
-- Do NOT write a separate design document to `docs/superpowers/specs/...`. Once
-  the human partner approves the design, produce a concise structured brief
-  instead (purpose, target users, key user stories with priorities, constraints,
-  success criteria).
+- Let the `brainstorming` skill write its design document to
+  `docs/superpowers/specs/YYYY-MM-DD-<topic>-design.md` and commit it, as it
+  normally would. This is the durable record of the brainstorming session.
+- In addition to that file, once the human partner approves the design,
+  produce a concise structured brief (purpose, target users, key user stories
+  with priorities, constraints, success criteria) so /speckit.specify has an
+  immediate input without re-reading the design doc.
 - Do NOT invoke the `writing-plans` skill afterward, and do NOT auto-chain into
   any other Superpowers skill. This hook's only job is to produce the approved
-  brief.
+  design doc + brief.
 - Do NOT create, modify or delete any application source files during this step.
 
 ## Hand-off
 
-Once the brief is approved, output it clearly labeled `## Refined Brief` and tell
-the user: "Brainstorming terminé — le brief ci-dessus va maintenant alimenter
-/speckit.specify." Then stop; the calling /speckit.specify command resumes from
-here with this brief as its effective input.
+Once the brief is approved, output it clearly labeled `## Refined Brief`,
+reference the path of the design document written under
+`docs/superpowers/specs/`, and tell the user: "Brainstorming terminé — le
+brief ci-dessus (et le document de design associé) vont maintenant alimenter
+/speckit.specify." Then stop; the calling /speckit.specify command resumes
+from here with this brief as its effective input.

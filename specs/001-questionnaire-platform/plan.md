@@ -19,6 +19,13 @@ and frontend (Next.js), replacing plain JavaScript — explicit decision by the 
 Updates Technical Context (Language/Version, Testing) and `research.md` below; propagated to
 `tasks.md` file extensions by `/speckit-tasks`.
 
+**Amendment 2026-09-19 (c)**: Phased deployment target, per constitution v1.1.0 — **V1 ships
+on managed platforms** (Vercel for the Next.js frontend, Strapi Cloud/SaaS for the backend);
+self-hosted containerization (Docker/Compose, CI, Kubernetes) is introduced later per the
+existing S5-S11 calendar as a migration from V1, not a rewrite. Updates Technical Context
+(Target Platform) below and `research.md`. `data-model.md`/`contracts/api.md` unaffected
+(deployment target does not change the REST contract).
+
 ## Summary
 
 Plateforme web permettant à un auteur de créer/publier des questionnaires (Likert, choix
@@ -45,8 +52,11 @@ l'API Strapi, Vitest + Testing Library (fichiers `.test.ts`/`.test.tsx`) pour le
 Next.js — appliqués selon le cycle RED-GREEN-REFACTOR imposé par le hook `before_implement`
 (Superpowers `test-driven-development`)
 
-**Target Platform**: Conteneurs Linux (Docker), orchestrés via Kubernetes en cible finale (S11) ;
-pipelines CI sur Jenkins ou GitLab CI (S8-S10)
+**Target Platform**: **V1 (référence courante)** — Vercel pour le frontend Next.js, Strapi
+Cloud/SaaS pour le backend, tous deux déployés depuis le dépôt Git (build/déploiement managé,
+config versionnée). **Cible pédagogique ultérieure** — conteneurs Linux (Docker), orchestrés
+via Kubernetes (S11), pipelines CI sur Jenkins ou GitLab CI (S8-S10), migration progressive
+depuis V1 selon le calendrier de séances (constitution v1.1.0)
 
 **Project Type**: Application web (backend API + frontend séparés) — Option 2 de la structure
 projet ci-dessous
@@ -72,7 +82,7 @@ séance du module (11 séances)
 |---|---|---|
 | I. Test-First (NON-NEGOTIABLE) | PASS | `/speckit-implement` délègue à `before_implement` (superpowers-bridge → subagent-driven-development + test-driven-development) : un sous-agent par tâche, cycle RED-GREEN-REFACTOR obligatoire avant tout code de production. |
 | II. Simplicité et YAGNI | PASS | Structure à deux projets (backend Strapi / frontend Next.js) justifiée par la nature même du produit décrit (API + front séparés dans la spec source) ; pas de couche d'abstraction additionnelle (pas de microservices, pas de BFF) à ce stade. Next.js n'introduit pas de complexité supplémentaire par rapport à React+Vite — même bibliothèque de composants, juste un outillage de build/routage différent. |
-| III. Infrastructure as Code et Reproductibilité | PASS | Dockerfile + docker-compose.yml versionnés dès S5-S7 ; pipeline CI versionné (Jenkinsfile ou .gitlab-ci.yml) ; manifests Kubernetes versionnés pour S11. Aucune étape manuelle de déploiement. |
+| III. Infrastructure as Code et Reproductibilité | PASS | V1 : config Vercel (`vercel.json`, variables d'environnement) et Strapi Cloud versionnées dans le dépôt, déploiement déclenché par push Git (pas d'étape manuelle). Migration ultérieure : Dockerfile + docker-compose.yml versionnés dès S5-S7 ; pipeline CI versionné (Jenkinsfile ou .gitlab-ci.yml) ; manifests Kubernetes versionnés pour S11 — conforme à constitution v1.1.0. |
 | IV. Sécurité par défaut | PASS | Secrets (DB, SMTP, JWT Strapi) injectés via variables d'environnement/CI secrets, jamais commités ; accès aux questionnaires privés par lien signé unique (FR-017), vérifié côté serveur. |
 | V. Observabilité | PASS (avec ajout technique) | Le endpoint de santé n'est pas un besoin utilisateur donc absent de spec.md à dessein, mais est ajouté ici comme exigence technique transverse : l'API Strapi expose `GET /health` (voir contracts/), et les logs applicatifs sont structurés (JSON) sur stdout pour être collectés par la CI/les conteneurs. |
 

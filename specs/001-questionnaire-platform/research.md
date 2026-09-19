@@ -67,6 +67,29 @@
   données répondent) ; logs applicatifs en JSON structuré sur stdout.
 - **Rationale**: Répond directement à l'exigence de la constitution ; format standard
   consommable par n'importe quel orchestrateur de conteneurs (probe de liveness/readiness
-  Kubernetes en S11).
+  Kubernetes en S11) et par les health checks de Vercel/Strapi Cloud en V1.
 - **Alternatives considered**: Aucune — c'est une exigence non négociable de la constitution,
   pas un choix parmi plusieurs options produit.
+
+## Déploiement V1 (constitution v1.1.0)
+
+- **Decision**: Frontend Next.js déployé sur **Vercel** (build/déploiement automatique sur
+  push vers la branche principale), backend Strapi déployé sur **Strapi Cloud/SaaS**. La
+  conteneurisation Docker/Kubernetes reste planifiée pour S5-S11 comme migration ultérieure,
+  pas comme cible de V1.
+- **Rationale**: Décision explicite du propriétaire du projet — disposer rapidement d'une
+  version en production utilisable pour les questionnaires de fin de séance, sans attendre la
+  progression pédagogique Docker/CI/Kubernetes. Vercel et Strapi Cloud sont tous deux des
+  plateformes managées avec déploiement basé sur Git (pas d'étape manuelle), donc compatibles
+  avec le Principe III (IaC et reproductibilité) tel que clarifié dans la constitution v1.1.0.
+- **Implications pratiques** :
+  - Variables d'environnement (DB, JWT, SMTP) configurées dans les dashboards Vercel/Strapi
+    Cloud, jamais commitées — cohérent avec `.env.example` (Principe IV).
+  - PostgreSQL managé par Strapi Cloud en V1 (pas de conteneur `db` local en production) ;
+    `docker-compose.yml` (T010) reste utilisé pour le développement local et deviendra la base
+    du déploiement auto-hébergé à partir de S5-S7.
+  - Les emails d'invitation (FR-017) doivent utiliser un service SMTP compatible avec les
+    limites d'exécution de Strapi Cloud (pas de long-running process custom).
+- **Alternatives considered**: Auto-hébergement complet dès V1 (Docker Compose sur un VPS) —
+  écarté par le propriétaire du projet au profit d'une mise en ligne plus rapide via des
+  plateformes managées.

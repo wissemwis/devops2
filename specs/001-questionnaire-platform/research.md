@@ -1,5 +1,19 @@
 # Research: Plateforme de gestion de questionnaires
 
+## Langage
+
+- **Decision**: TypeScript sur l'ensemble du projet (backend Strapi 5 et frontend Next.js).
+  *(Amendement 2026-09-19 — remplace JavaScript.)*
+- **Rationale**: Décision explicite du propriétaire du projet. Strapi 5 et Next.js ont tous
+  deux un support TypeScript de première classe (génération de types pour les content-types
+  Strapi, `tsconfig.json` natif pour Next.js), donc aucun outillage supplémentaire à ajouter
+  au-delà des `devDependencies` standard (`typescript`, `@types/node`, et les `@types/*`
+  pertinents). Le typage partagé (ex. formes de réponse d'API) réduit le risque d'erreurs entre
+  les deux projets malgré leur séparation physique.
+- **Alternatives considered**: JavaScript pur (choix par défaut initial, plus rapide à
+  démarrer mais sans garde-fou de type entre backend et frontend séparés) — écarté sur décision
+  explicite du propriétaire du projet.
+
 ## Frontend framework
 
 - **Decision**: Next.js (App Router). *(Amendement 2026-09-19 — remplace React 18 + Vite, voir

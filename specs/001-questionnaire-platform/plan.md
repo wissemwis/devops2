@@ -6,13 +6,18 @@
 
 **Note**: This template is filled in by the `/speckit-plan` command; its definition describes the execution workflow.
 
-**Amendment 2026-09-19**: Frontend framework changed from React 18 + Vite to **Next.js**,
+**Amendment 2026-09-19 (a)**: Frontend framework changed from React 18 + Vite to **Next.js**,
 per the brainstorming design at
 [docs/superpowers/specs/2026-09-19-questionnaire-platform-design.md](../../docs/superpowers/specs/2026-09-19-questionnaire-platform-design.md).
 Backend (Strapi 5) is unchanged. This amendment updates Technical Context, Constitution
 Check, Project Structure below, and `research.md`/`quickstart.md`; it does not touch
 `data-model.md` or `contracts/api.md` (backend-only, unaffected) nor `tasks.md` (regenerated
 separately by `/speckit-tasks` if needed).
+
+**Amendment 2026-09-19 (b)**: Language changed to **TypeScript** on both backend (Strapi 5)
+and frontend (Next.js), replacing plain JavaScript — explicit decision by the project owner.
+Updates Technical Context (Language/Version, Testing) and `research.md` below; propagated to
+`tasks.md` file extensions by `/speckit-tasks`.
 
 ## Summary
 
@@ -26,16 +31,19 @@ Kubernetes) conformément à la constitution du projet.
 
 ## Technical Context
 
-**Language/Version**: JavaScript/TypeScript sur Node.js 20 LTS (runtime requis par Strapi 5)
+**Language/Version**: TypeScript sur Node.js 20 LTS (runtime requis par Strapi 5), backend et
+frontend
 
-**Primary Dependencies**: Strapi 5 (backend API + admin), Next.js (App Router, frontend),
+**Primary Dependencies**: Strapi 5 en mode TypeScript (backend API + admin, content-types
+générés en `.ts`), Next.js (App Router, frontend, TypeScript activé via `tsconfig.json`),
 Nodemailer ou service SMTP équivalent (emails d'invitation, FR-017)
 
 **Storage**: PostgreSQL (production et CI), SQLite acceptable en développement local uniquement
 
-**Testing**: Jest + Supertest pour les tests de contrat/intégration de l'API Strapi, Vitest +
-Testing Library pour le frontend Next.js — appliqués selon le cycle RED-GREEN-REFACTOR imposé
-par le hook `before_implement` (Superpowers `test-driven-development`)
+**Testing**: Jest + Supertest (fichiers `.test.ts`) pour les tests de contrat/intégration de
+l'API Strapi, Vitest + Testing Library (fichiers `.test.ts`/`.test.tsx`) pour le frontend
+Next.js — appliqués selon le cycle RED-GREEN-REFACTOR imposé par le hook `before_implement`
+(Superpowers `test-driven-development`)
 
 **Target Platform**: Conteneurs Linux (Docker), orchestrés via Kubernetes en cible finale (S11) ;
 pipelines CI sur Jenkins ou GitLab CI (S8-S10)

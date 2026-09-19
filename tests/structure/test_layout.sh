@@ -42,10 +42,12 @@ assert_dir_exists "backend/tests/integration" "backend/tests/integration"
 
 echo ""
 echo "Testing frontend/ structure..."
-# Frontend structure
-assert_dir_exists "frontend/src/components" "frontend/src/components"
-assert_dir_exists "frontend/src/pages" "frontend/src/pages"
-assert_dir_exists "frontend/src/services" "frontend/src/services"
+# Frontend structure (Next.js App Router, per plan.md amendment 2026-09-19)
+assert_dir_exists "frontend/app/questionnaires/create" "frontend/app/questionnaires/create"
+assert_dir_exists "frontend/app/q/[token]" "frontend/app/q/[token]"
+assert_dir_exists "frontend/app/questionnaires/[id]/results" "frontend/app/questionnaires/[id]/results"
+assert_dir_exists "frontend/components" "frontend/components"
+assert_dir_exists "frontend/services" "frontend/services"
 assert_dir_exists "frontend/tests/unit" "frontend/tests/unit"
 assert_dir_exists "frontend/tests/integration" "frontend/tests/integration"
 

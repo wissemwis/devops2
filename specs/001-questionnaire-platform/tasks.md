@@ -21,15 +21,15 @@ of each story.
 
 - **[P]**: Can run in parallel (different files, no dependencies)
 - **[Story]**: Which user story this task belongs to (US1, US2, US3)
-- Paths: `backend/` = API Strapi, `frontend/` = React/Vite (Option 2, voir plan.md)
+- Paths: `backend/` = API Strapi, `frontend/` = Next.js App Router (Option 2, voir plan.md — amendé 2026-09-19, remplace React/Vite)
 
 ---
 
 ## Phase 1: Setup (Shared Infrastructure)
 
-- [X] T001 Create project structure per plan.md: `backend/`, `frontend/` at repository root
+- [X] T001 Create project structure per plan.md: `backend/`, `frontend/` at repository root *(complété avant l'amendement Next.js du 2026-09-19 ; `frontend/` restructuré manuellement vers `app/`/`components/`/`services/` pour rester conforme à plan.md — voir commit de l'amendement)*
 - [ ] T002 Initialize backend Strapi 5 project in `backend/` (Node.js 20 LTS) per plan.md Primary Dependencies
-- [ ] T003 [P] Initialize frontend React 18 + Vite project in `frontend/` per plan.md Primary Dependencies
+- [ ] T003 [P] Initialize frontend Next.js project in `frontend/` (App Router) per plan.md Primary Dependencies
 - [ ] T004 [P] Configure linting/formatting (ESLint + Prettier) for `backend/` and `frontend/`
 - [ ] T005 Create `.env.example` documenting DB, JWT and SMTP variables per plan.md Constraints (Principe IV — aucun secret en clair)
 
@@ -78,9 +78,9 @@ le publier, vérifier la transition de statut brouillon → publié et la prése
 - [ ] T019 [US1] Implement `PATCH /api/questionnaires/:id/questions` controller + route in `backend/src/api/question/controllers/question.js` (depends on T017, T018)
 - [ ] T020 [US1] Implement `POST /api/questionnaires/:id/publish` with "au moins une question" validation (422 sinon) in `backend/src/api/questionnaire/controllers/questionnaire.js` (depends on T018, T019)
 - [ ] T021 [US1] Implement `POST /api/questionnaires/:id/close` transition (statut → fermé) in `backend/src/api/questionnaire/controllers/questionnaire.js` (depends on T020)
-- [ ] T022 [P] [US1] Frontend: questionnaire creation page in `frontend/src/pages/CreateQuestionnaire.jsx`
-- [ ] T023 [P] [US1] Frontend: question editor component (ajout/réordre/suppression, types Likert/choix multiple/texte libre) in `frontend/src/components/QuestionEditor.jsx`
-- [ ] T024 [US1] Frontend: API client + publish/close actions in `frontend/src/services/questionnaireService.js` (depends on T022, T023)
+- [ ] T022 [P] [US1] Frontend: questionnaire creation page in `frontend/app/questionnaires/create/page.jsx`
+- [ ] T023 [P] [US1] Frontend: question editor component (ajout/réordre/suppression, types Likert/choix multiple/texte libre) in `frontend/components/QuestionEditor.jsx`
+- [ ] T024 [US1] Frontend: API client + publish/close actions in `frontend/services/questionnaireService.js` (depends on T022, T023)
 
 **Checkpoint**: User Story 1 fonctionnelle et testable indépendamment (MVP).
 
@@ -114,8 +114,8 @@ invitation (quickstart.md Scénario 3).
 - [ ] T035 [US2] Implement `POST /api/questionnaires/:id/invitations` (création + envoi email SMTP via plugin Email Strapi — research.md) (depends on T033)
 - [ ] T036 [US2] Implement `POST /api/questionnaires/:id/reponses` upsert, pré-remplissage nom/prénom/email depuis l'invitation si présent (depends on T031, T032, T034)
 - [ ] T037 [US2] Implement `POST /api/questionnaires/:id/reponses/:reponseId/submit` with obligatoire-fields validation (FR-010) and unicité (questionnaire, email) pour questionnaire privé — edge case double soumission (depends on T036)
-- [ ] T038 [P] [US2] Frontend: public/private questionnaire fill page (pré-remplissage si invitation) in `frontend/src/pages/FillQuestionnaire.jsx`
-- [ ] T039 [US2] Frontend: submission + confirmation UI, message d'erreur sur question obligatoire manquante in `frontend/src/pages/FillQuestionnaire.jsx` (depends on T038)
+- [ ] T038 [P] [US2] Frontend: public/private questionnaire fill page (pré-remplissage si invitation) in `frontend/app/q/[token]/page.jsx`
+- [ ] T039 [US2] Frontend: submission + confirmation UI, message d'erreur sur question obligatoire manquante in `frontend/app/q/[token]/page.jsx` (depends on T038)
 
 **Checkpoint**: User Stories 1 et 2 fonctionnelles indépendamment.
 
@@ -144,8 +144,8 @@ non-répondants et la relance pour un questionnaire privé (quickstart.md Scéna
 - [ ] T046 [US3] Implement `GET /api/questionnaires/:id/export.csv` (une ligne par réponse complète) in `backend/src/api/questionnaire/services/export.js` (depends on T045)
 - [ ] T047 [US3] Implement `GET /api/questionnaires/:id/non-repondants` (invitations sans réponse liée, questionnaire privé uniquement — FR-018) (depends on T033, T031)
 - [ ] T048 [US3] Implement `POST /api/questionnaires/:id/relance` (renvoi de l'email d'invitation) (depends on T035, T047)
-- [ ] T049 [P] [US3] Frontend: results page with charts (statistiques par question) in `frontend/src/pages/Results.jsx`
-- [ ] T050 [US3] Frontend: CSV export action + non-répondants/relance UI in `frontend/src/pages/Results.jsx` (depends on T049)
+- [ ] T049 [P] [US3] Frontend: results page with charts (statistiques par question) in `frontend/app/questionnaires/[id]/results/page.jsx`
+- [ ] T050 [US3] Frontend: CSV export action + non-répondants/relance UI in `frontend/app/questionnaires/[id]/results/page.jsx` (depends on T049)
 
 **Checkpoint**: Les trois user stories sont fonctionnelles indépendamment.
 

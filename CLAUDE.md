@@ -55,11 +55,12 @@ reports) via `git add -f`, so future dispatches need the same `-f`.
 
 ## Current state
 
-Only **T001** of 59 tasks in `specs/001-questionnaire-platform/tasks.md` is done: the
-`backend/`/`frontend/` directory skeleton exists (empty except `.gitkeep` files and
-`tests/structure/test_layout.sh`), matching `plan.md` § Project Structure. No application code,
-no `package.json`, no dependencies are installed yet — do not assume `npm install` or any build
-command works until later tasks land it.
+**T001** and **T002** of 59 tasks in `specs/001-questionnaire-platform/tasks.md` are done: the
+`backend/`/`frontend/` directory skeleton exists (T001, matching `plan.md` § Project Structure),
+and `backend/` is now a real Strapi 5 TypeScript project (`create-strapi-app@5.54.0`, SQLite for
+local dev per research.md), with `npm install`/`npm run build` verified working. `frontend/` is
+still empty except `.gitkeep` files and `tests/structure/test_layout.sh` — do not assume any
+frontend build command works until T003 lands it.
 
 ## Source of truth for requirements and design
 

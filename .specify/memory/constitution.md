@@ -1,18 +1,19 @@
 <!--
 Sync Impact Report
-- Version change: [TEMPLATE] → 1.0.0 (initial ratification)
-- Modified principles: n/a (first adoption)
-- Added sections:
-  - Core Principles: I. Test-First (Superpowers TDD, NON-NEGOTIABLE), II. Simplicité & YAGNI,
-    III. Infrastructure as Code & Reproductibilité, IV. Sécurité par défaut,
-    V. Observabilité
-  - Contraintes Techniques et Pédagogiques (Section 2)
-  - Workflow de Développement et Déploiement (Section 3)
-  - Governance
+- Version change: 1.0.0 → 1.1.0
+- Modified principles: none (III. Infrastructure as Code et Reproductibilité unchanged in
+  substance — clarified in Contraintes Techniques et Pédagogiques that it applies equally to
+  managed platforms, not reworded as a principle)
+- Added sections: none
+- Modified sections:
+  - Contraintes Techniques et Pédagogiques: added a phased deployment strategy — V1 on managed
+    platforms (Vercel + Strapi Cloud) for fast real-world availability, self-hosted
+    containerization (Docker/CI/Kubernetes) introduced progressively per the existing S5-S11
+    calendar as a migration from V1, not a rewrite of the pedagogical goal.
 - Removed sections: none
 - Deferred TODOs: none
 - Templates requiring follow-up: none — plan-template.md, spec-template.md, tasks-template.md
-  reference the constitution generically and need no edits for this ratification.
+  reference the constitution generically and need no edits for this amendment.
 -->
 # Questionnaire App (DevOps 2) Constitution
 
@@ -52,13 +53,27 @@ son état sans accès direct au processus.
 
 ## Contraintes Techniques et Pédagogiques
 
-- Stack de référence : API Strapi (backend + schéma de données), frontend consommant cette API,
-  conteneurisation Docker/Docker Compose, intégration continue (Jenkins ou GitLab CI au choix
-  de la séance), déploiement final sur Kubernetes.
+- Stack de référence : API Strapi (backend + schéma de données), frontend Next.js consommant
+  cette API, conteneurisation Docker/Docker Compose, intégration continue (Jenkins ou GitLab CI
+  au choix de la séance), déploiement final sur Kubernetes.
+- **Stratégie de déploiement en deux temps** :
+  1. **V1 — plateformes managées** : la première version en production est déployée sur Vercel
+     (frontend Next.js) et Strapi Cloud/SaaS (backend), pour disposer rapidement d'une version
+     utilisable en conditions réelles (questionnaires de fin de séance dès le début du module).
+  2. **Migration progressive vers l'auto-hébergement** : la conteneurisation et le déploiement
+     auto-hébergé restent l'objectif pédagogique du module et sont introduits selon le
+     calendrier de séances ci-dessous, comme une migration depuis le déploiement managé
+     initial — pas une refonte du produit.
+  Le Principe III (Infrastructure as Code et Reproductibilité) s'applique aux deux : la
+  configuration Vercel/Strapi Cloud (variables d'environnement, build settings, domaines) DOIT
+  être versionnée dans le dépôt et le déploiement DOIT rester scriptable via leur CLI/CI,
+  au même titre que Docker/Kubernetes plus tard — aucune étape de configuration manuelle,
+  managée ou non, n'est acceptée.
 - Le déploiement progresse séance par séance (S1 initialisation Git → S2 branching → S3 build
   npm → S4 pipeline CI simple → S5-S7 Docker/Compose → S8-S10 Jenkins/GitLab CI → S11
   Kubernetes) ; une fonctionnalité livrée à une séance donnée ne doit pas dépendre d'un outil
-  prévu pour une séance ultérieure.
+  prévu pour une séance ultérieure. La V1 managée (Vercel/Strapi Cloud) reste le déploiement de
+  référence jusqu'à ce que la migration Docker/Kubernetes d'une séance donnée soit validée.
 - Les entités de domaine (Questionnaire, Question, Réponse, Utilisateur) et leurs contraintes
   telles que décrites dans la spécification du projet font foi pour la modélisation du schéma
   Strapi.
@@ -89,4 +104,4 @@ Les amendements à cette constitution suivent le versionnage sémantique :
 Chaque amendement doit produire un Sync Impact Report (commentaire HTML en tête de fichier) et
 mettre à jour la date de dernier amendement ci-dessous.
 
-**Version**: 1.0.0 | **Ratified**: 2026-09-19 | **Last Amended**: 2026-09-19
+**Version**: 1.1.0 | **Ratified**: 2026-09-19 | **Last Amended**: 2026-09-19

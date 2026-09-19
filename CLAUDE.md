@@ -2,6 +2,29 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## HARD RULE — applies to every session, no exceptions
+
+**No implementation task from `specs/001-questionnaire-platform/tasks.md` may be coded directly
+in a Claude Code session's own context.** This has already been violated once (T002 was
+implemented and marked `[X]` directly in-session, skipping the review gate below, then fixed
+retroactively — see `tasks.md` T002 annotation). It must not happen again, in this session or any
+future one, on any branch.
+
+Before touching a task's implementation:
+1. Run `/speckit-implement` (or, in an environment where that skill isn't registered but this
+   file is, follow the same sequence manually per the "Spec Kit workflow" section below).
+2. That means: a fresh implementer subagent per task, RED before GREEN (a failing test exists
+   before any production code), and a task-scoped reviewer subagent that actually runs and
+   reports PASS/FAIL — dispatched with the Agent tool if the Superpowers skills aren't directly
+   invocable — **before** the task's checkbox in `tasks.md` is changed from `[ ]` to `[X]`.
+3. A task is only `[X]` once that reviewer subagent's verdict is recorded (inline annotation in
+   `tasks.md`, same style as T001/T002). No verdict recorded → the box stays `[ ]`, however
+   confident the implementation looks.
+
+If you find yourself about to `Write`/`Edit` files under `backend/` or `frontend/` to satisfy a
+`tasks.md` item without having dispatched an implementer+reviewer subagent pair first: stop,
+back out, and start over through the process above.
+
 ## What this repository is
 
 Two things at once, on purpose:
@@ -28,7 +51,8 @@ steps to the [Superpowers](https://github.com/obra/superpowers-marketplace) plug
   `brainstorming` skill. Refines a raw feature idea (questions, 2-3 approaches, sectioned
   design) before `/speckit-specify` writes `spec.md`. Writes its design doc to
   `docs/superpowers/specs/YYYY-MM-DD-<topic>-design.md` in addition to a condensed brief.
-- **`before_implement`** (mandatory hook, `optional: false`) → `speckit.superpowers-bridge.tdd-implement`
+- **`before_implement`** (mandatory hook, `optional: false` — see the HARD RULE above, this is
+  not optional in practice either) → `speckit.superpowers-bridge.tdd-implement`
   → Superpowers `subagent-driven-development` + `test-driven-development`. Executes `tasks.md`
   with a fresh implementer subagent per task, strict RED-GREEN-REFACTOR, and a task-scoped
   reviewer subagent before a task is marked `[X]`. For a task marked **`[UI]`** in `tasks.md`

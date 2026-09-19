@@ -21,15 +21,15 @@ of each story.
 
 - **[P]**: Can run in parallel (different files, no dependencies)
 - **[Story]**: Which user story this task belongs to (US1, US2, US3)
-- Paths: `backend/` = API Strapi, `frontend/` = Next.js App Router (Option 2, voir plan.md — amendé 2026-09-19, remplace React/Vite)
+- Paths: `backend/` = API Strapi, `frontend/` = Next.js App Router (Option 2, voir plan.md — amendé 2026-09-19, remplace React/Vite). Langage : TypeScript sur les deux projets (amendé 2026-09-19, remplace JavaScript) — `.ts` pour le code non-UI, `.tsx` pour les composants/pages React.
 
 ---
 
 ## Phase 1: Setup (Shared Infrastructure)
 
 - [X] T001 Create project structure per plan.md: `backend/`, `frontend/` at repository root *(complété avant l'amendement Next.js du 2026-09-19 ; `frontend/` restructuré manuellement vers `app/`/`components/`/`services/` pour rester conforme à plan.md — voir commit de l'amendement)*
-- [ ] T002 Initialize backend Strapi 5 project in `backend/` (Node.js 20 LTS) per plan.md Primary Dependencies
-- [ ] T003 [P] Initialize frontend Next.js project in `frontend/` (App Router) per plan.md Primary Dependencies
+- [ ] T002 Initialize backend Strapi 5 project in `backend/` with the TypeScript template (Node.js 20 LTS) per plan.md Primary Dependencies
+- [ ] T003 [P] Initialize frontend Next.js project in `frontend/` (App Router, TypeScript enabled via `tsconfig.json`) per plan.md Primary Dependencies
 - [ ] T004 [P] Configure linting/formatting (ESLint + Prettier) for `backend/` and `frontend/`
 - [ ] T005 Create `.env.example` documenting DB, JWT and SMTP variables per plan.md Constraints (Principe IV — aucun secret en clair)
 
@@ -41,10 +41,10 @@ of each story.
 
 **⚠️ CRITICAL**: Aucune user story ne peut démarrer avant la fin de cette phase.
 
-- [ ] T006 Configure PostgreSQL connection in `backend/config/database.js` per research.md (Storage: PostgreSQL en CI/production, SQLite en dev)
+- [ ] T006 Configure PostgreSQL connection in `backend/config/database.ts` per research.md (Storage: PostgreSQL en CI/production, SQLite en dev)
 - [ ] T007 [P] Extend the Strapi `users-permissions` User content-type with `role` (enum: auteur, répondant, administrateur) in `backend/src/extensions/users-permissions/content-types/user/schema.json` per data-model.md Utilisateur
-- [ ] T008 [P] Implement `GET /health` route + controller in `backend/src/api/health/routes/health.js` and `backend/src/api/health/controllers/health.js` returning `{"status":"ok"}` (200) or `{"status":"degraded","reason":<cause>}` (503) per contracts/api.md
-- [ ] T009 [P] Configure structured JSON logging on stdout in `backend/config/logger.js` (Principe V — Observabilité)
+- [ ] T008 [P] Implement `GET /health` route + controller in `backend/src/api/health/routes/health.ts` and `backend/src/api/health/controllers/health.ts` returning `{"status":"ok"}` (200) or `{"status":"degraded","reason":<cause>}` (503) per contracts/api.md
+- [ ] T009 [P] Configure structured JSON logging on stdout in `backend/config/logger.ts` (Principe V — Observabilité)
 - [ ] T010 Create `docker-compose.yml` at repository root wiring `db` (PostgreSQL), `backend`, `frontend` services per plan.md Constraints (Principe III — IaC)
 
 **Checkpoint**: Fondations prêtes — les user stories peuvent démarrer (en parallèle si staffé).
@@ -64,23 +64,23 @@ le publier, vérifier la transition de statut brouillon → publié et la prése
 
 > Écrire ces tests en premier, confirmer qu'ils échouent avant toute implémentation (Principe I).
 
-- [ ] T011 [P] [US1] Contract test `POST /api/questionnaires` in `backend/tests/contract/test_questionnaires_create.js`
-- [ ] T012 [P] [US1] Contract test `PATCH /api/questionnaires/:id/questions` in `backend/tests/contract/test_questions_add.js`
-- [ ] T013 [P] [US1] Contract test `POST /api/questionnaires/:id/publish` (incl. rejet 422 si aucune question — edge case spec.md) in `backend/tests/contract/test_questionnaire_publish.js`
-- [ ] T014 [P] [US1] Contract test `POST /api/questionnaires/:id/close` in `backend/tests/contract/test_questionnaire_close.js`
-- [ ] T015 [P] [US1] Integration test quickstart.md Scénario 1 in `backend/tests/integration/test_create_publish.js`
+- [ ] T011 [P] [US1] Contract test `POST /api/questionnaires` in `backend/tests/contract/test_questionnaires_create.ts`
+- [ ] T012 [P] [US1] Contract test `PATCH /api/questionnaires/:id/questions` in `backend/tests/contract/test_questions_add.ts`
+- [ ] T013 [P] [US1] Contract test `POST /api/questionnaires/:id/publish` (incl. rejet 422 si aucune question — edge case spec.md) in `backend/tests/contract/test_questionnaire_publish.ts`
+- [ ] T014 [P] [US1] Contract test `POST /api/questionnaires/:id/close` in `backend/tests/contract/test_questionnaire_close.ts`
+- [ ] T015 [P] [US1] Integration test quickstart.md Scénario 1 in `backend/tests/integration/test_create_publish.ts`
 
 ### Implementation for User Story 1
 
 - [ ] T016 [P] [US1] Create `Questionnaire` content-type (`titre`: string requis, `description`: text optionnel, `statut`: enum brouillon/publié/fermé défaut brouillon, `visibilite`: enum publique/privée requis, `auteur`: relation many-to-one Utilisateur) in `backend/src/api/questionnaire` per data-model.md
 - [ ] T017 [P] [US1] Create `Question` content-type (`texte`: string requis, `type`: enum likert/choix_multiple/texte_libre requis, `position`: integer requis unique par questionnaire, `obligatoire`: boolean défaut false, `image`: media optionnel, `questionnaire`: relation many-to-one) in `backend/src/api/question` per data-model.md
-- [ ] T018 [US1] Implement `POST /api/questionnaires` controller + route in `backend/src/api/questionnaire/controllers/questionnaire.js` (depends on T016)
-- [ ] T019 [US1] Implement `PATCH /api/questionnaires/:id/questions` controller + route in `backend/src/api/question/controllers/question.js` (depends on T017, T018)
-- [ ] T020 [US1] Implement `POST /api/questionnaires/:id/publish` with "au moins une question" validation (422 sinon) in `backend/src/api/questionnaire/controllers/questionnaire.js` (depends on T018, T019)
-- [ ] T021 [US1] Implement `POST /api/questionnaires/:id/close` transition (statut → fermé) in `backend/src/api/questionnaire/controllers/questionnaire.js` (depends on T020)
-- [ ] T022 [P] [US1] Frontend: questionnaire creation page in `frontend/app/questionnaires/create/page.jsx`
-- [ ] T023 [P] [US1] Frontend: question editor component (ajout/réordre/suppression, types Likert/choix multiple/texte libre) in `frontend/components/QuestionEditor.jsx`
-- [ ] T024 [US1] Frontend: API client + publish/close actions in `frontend/services/questionnaireService.js` (depends on T022, T023)
+- [ ] T018 [US1] Implement `POST /api/questionnaires` controller + route in `backend/src/api/questionnaire/controllers/questionnaire.ts` (depends on T016)
+- [ ] T019 [US1] Implement `PATCH /api/questionnaires/:id/questions` controller + route in `backend/src/api/question/controllers/question.ts` (depends on T017, T018)
+- [ ] T020 [US1] Implement `POST /api/questionnaires/:id/publish` with "au moins une question" validation (422 sinon) in `backend/src/api/questionnaire/controllers/questionnaire.ts` (depends on T018, T019)
+- [ ] T021 [US1] Implement `POST /api/questionnaires/:id/close` transition (statut → fermé) in `backend/src/api/questionnaire/controllers/questionnaire.ts` (depends on T020)
+- [ ] T022 [P] [US1] Frontend: questionnaire creation page in `frontend/app/questionnaires/create/page.tsx`
+- [ ] T023 [P] [US1] Frontend: question editor component (ajout/réordre/suppression, types Likert/choix multiple/texte libre) in `frontend/components/QuestionEditor.tsx`
+- [ ] T024 [US1] Frontend: API client + publish/close actions in `frontend/services/questionnaireService.ts` (depends on T022, T023)
 
 **Checkpoint**: User Story 1 fonctionnelle et testable indépendamment (MVP).
 
@@ -98,12 +98,12 @@ invitation (quickstart.md Scénario 3).
 
 ### Tests for User Story 2 ⚠️
 
-- [ ] T025 [P] [US2] Contract test `GET /api/questionnaires/:id` (accès public sans auth, refus si privé sans jeton — FR-007/FR-008) in `backend/tests/contract/test_questionnaire_get.js`
-- [ ] T026 [P] [US2] Contract test `POST /api/questionnaires/:id/reponses` (upsert, statut en_cours) in `backend/tests/contract/test_reponses_create.js`
-- [ ] T027 [P] [US2] Contract test `POST /api/questionnaires/:id/reponses/:reponseId/submit` (422 si question obligatoire manquante — FR-010) in `backend/tests/contract/test_reponse_submit.js`
-- [ ] T028 [P] [US2] Contract test `POST /api/questionnaires/:id/invitations` (création + envoi email) in `backend/tests/contract/test_invitations_create.js`
-- [ ] T029 [P] [US2] Integration test quickstart.md Scénario 2 (public) in `backend/tests/integration/test_repondre_public.js`
-- [ ] T030 [P] [US2] Integration test quickstart.md Scénario 3 (privé, pré-remplissage nom/prénom/email) in `backend/tests/integration/test_repondre_prive.js`
+- [ ] T025 [P] [US2] Contract test `GET /api/questionnaires/:id` (accès public sans auth, refus si privé sans jeton — FR-007/FR-008) in `backend/tests/contract/test_questionnaire_get.ts`
+- [ ] T026 [P] [US2] Contract test `POST /api/questionnaires/:id/reponses` (upsert, statut en_cours) in `backend/tests/contract/test_reponses_create.ts`
+- [ ] T027 [P] [US2] Contract test `POST /api/questionnaires/:id/reponses/:reponseId/submit` (422 si question obligatoire manquante — FR-010) in `backend/tests/contract/test_reponse_submit.ts`
+- [ ] T028 [P] [US2] Contract test `POST /api/questionnaires/:id/invitations` (création + envoi email) in `backend/tests/contract/test_invitations_create.ts`
+- [ ] T029 [P] [US2] Integration test quickstart.md Scénario 2 (public) in `backend/tests/integration/test_repondre_public.ts`
+- [ ] T030 [P] [US2] Integration test quickstart.md Scénario 3 (privé, pré-remplissage nom/prénom/email) in `backend/tests/integration/test_repondre_prive.ts`
 
 ### Implementation for User Story 2
 
@@ -114,8 +114,8 @@ invitation (quickstart.md Scénario 3).
 - [ ] T035 [US2] Implement `POST /api/questionnaires/:id/invitations` (création + envoi email SMTP via plugin Email Strapi — research.md) (depends on T033)
 - [ ] T036 [US2] Implement `POST /api/questionnaires/:id/reponses` upsert, pré-remplissage nom/prénom/email depuis l'invitation si présent (depends on T031, T032, T034)
 - [ ] T037 [US2] Implement `POST /api/questionnaires/:id/reponses/:reponseId/submit` with obligatoire-fields validation (FR-010) and unicité (questionnaire, email) pour questionnaire privé — edge case double soumission (depends on T036)
-- [ ] T038 [P] [US2] Frontend: public/private questionnaire fill page (pré-remplissage si invitation) in `frontend/app/q/[token]/page.jsx`
-- [ ] T039 [US2] Frontend: submission + confirmation UI, message d'erreur sur question obligatoire manquante in `frontend/app/q/[token]/page.jsx` (depends on T038)
+- [ ] T038 [P] [US2] Frontend: public/private questionnaire fill page (pré-remplissage si invitation) in `frontend/app/q/[token]/page.tsx`
+- [ ] T039 [US2] Frontend: submission + confirmation UI, message d'erreur sur question obligatoire manquante in `frontend/app/q/[token]/page.tsx` (depends on T038)
 
 **Checkpoint**: User Stories 1 et 2 fonctionnelles indépendamment.
 
@@ -132,20 +132,20 @@ non-répondants et la relance pour un questionnaire privé (quickstart.md Scéna
 
 ### Tests for User Story 3 ⚠️
 
-- [ ] T040 [P] [US3] Contract test `GET /api/questionnaires/:id/resultats` in `backend/tests/contract/test_resultats.js`
-- [ ] T041 [P] [US3] Contract test `GET /api/questionnaires/:id/export.csv` in `backend/tests/contract/test_export_csv.js`
-- [ ] T042 [P] [US3] Contract test `GET /api/questionnaires/:id/non-repondants` (questionnaire privé uniquement — FR-018) in `backend/tests/contract/test_non_repondants.js`
-- [ ] T043 [P] [US3] Contract test `POST /api/questionnaires/:id/relance` in `backend/tests/contract/test_relance.js`
-- [ ] T044 [P] [US3] Integration test quickstart.md Scénario 4 in `backend/tests/integration/test_resultats_export.js`
+- [ ] T040 [P] [US3] Contract test `GET /api/questionnaires/:id/resultats` in `backend/tests/contract/test_resultats.ts`
+- [ ] T041 [P] [US3] Contract test `GET /api/questionnaires/:id/export.csv` in `backend/tests/contract/test_export_csv.ts`
+- [ ] T042 [P] [US3] Contract test `GET /api/questionnaires/:id/non-repondants` (questionnaire privé uniquement — FR-018) in `backend/tests/contract/test_non_repondants.ts`
+- [ ] T043 [P] [US3] Contract test `POST /api/questionnaires/:id/relance` in `backend/tests/contract/test_relance.ts`
+- [ ] T044 [P] [US3] Integration test quickstart.md Scénario 4 in `backend/tests/integration/test_resultats_export.ts`
 
 ### Implementation for User Story 3
 
-- [ ] T045 [US3] Implement `GET /api/questionnaires/:id/resultats` aggregation service (distribution Likert/choix multiple, liste texte libre) in `backend/src/api/questionnaire/services/resultats.js` (depends on T031, T032)
-- [ ] T046 [US3] Implement `GET /api/questionnaires/:id/export.csv` (une ligne par réponse complète) in `backend/src/api/questionnaire/services/export.js` (depends on T045)
+- [ ] T045 [US3] Implement `GET /api/questionnaires/:id/resultats` aggregation service (distribution Likert/choix multiple, liste texte libre) in `backend/src/api/questionnaire/services/resultats.ts` (depends on T031, T032)
+- [ ] T046 [US3] Implement `GET /api/questionnaires/:id/export.csv` (une ligne par réponse complète) in `backend/src/api/questionnaire/services/export.ts` (depends on T045)
 - [ ] T047 [US3] Implement `GET /api/questionnaires/:id/non-repondants` (invitations sans réponse liée, questionnaire privé uniquement — FR-018) (depends on T033, T031)
 - [ ] T048 [US3] Implement `POST /api/questionnaires/:id/relance` (renvoi de l'email d'invitation) (depends on T035, T047)
-- [ ] T049 [P] [US3] Frontend: results page with charts (statistiques par question) in `frontend/app/questionnaires/[id]/results/page.jsx`
-- [ ] T050 [US3] Frontend: CSV export action + non-répondants/relance UI in `frontend/app/questionnaires/[id]/results/page.jsx` (depends on T049)
+- [ ] T049 [P] [US3] Frontend: results page with charts (statistiques par question) in `frontend/app/questionnaires/[id]/results/page.tsx`
+- [ ] T050 [US3] Frontend: CSV export action + non-répondants/relance UI in `frontend/app/questionnaires/[id]/results/page.tsx` (depends on T049)
 
 **Checkpoint**: Les trois user stories sont fonctionnelles indépendamment.
 

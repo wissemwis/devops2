@@ -6,13 +6,21 @@
 
 **Note**: This template is filled in by the `/speckit-plan` command; its definition describes the execution workflow.
 
+**Amendment 2026-09-19**: Frontend framework changed from React 18 + Vite to **Next.js**,
+per the brainstorming design at
+[docs/superpowers/specs/2026-09-19-questionnaire-platform-design.md](../../docs/superpowers/specs/2026-09-19-questionnaire-platform-design.md).
+Backend (Strapi 5) is unchanged. This amendment updates Technical Context, Constitution
+Check, Project Structure below, and `research.md`/`quickstart.md`; it does not touch
+`data-model.md` or `contracts/api.md` (backend-only, unaffected) nor `tasks.md` (regenerated
+separately by `/speckit-tasks` if needed).
+
 ## Summary
 
 Plateforme web permettant à un auteur de créer/publier des questionnaires (Likert, choix
 multiple, texte libre), à un répondant d'y répondre via lien public ou invitation privée, et à
 l'auteur/administrateur de consulter les résultats, les exporter en CSV et relancer les
 non-répondants des questionnaires privés. Approche technique : API headless Strapi comme
-backend (schéma Questionnaire/Question/Réponse/Utilisateur, endpoints REST), frontend React
+backend (schéma Questionnaire/Question/Réponse/Utilisateur, endpoints REST), frontend Next.js
 consommant cette API, le tout conteneurisé et déployé progressivement (Docker Compose → CI →
 Kubernetes) conformément à la constitution du projet.
 
@@ -20,14 +28,14 @@ Kubernetes) conformément à la constitution du projet.
 
 **Language/Version**: JavaScript/TypeScript sur Node.js 20 LTS (runtime requis par Strapi 5)
 
-**Primary Dependencies**: Strapi 5 (backend API + admin), React 18 + Vite (frontend), Nodemailer
-ou service SMTP équivalent (emails d'invitation, FR-017)
+**Primary Dependencies**: Strapi 5 (backend API + admin), Next.js (App Router, frontend),
+Nodemailer ou service SMTP équivalent (emails d'invitation, FR-017)
 
 **Storage**: PostgreSQL (production et CI), SQLite acceptable en développement local uniquement
 
 **Testing**: Jest + Supertest pour les tests de contrat/intégration de l'API Strapi, Vitest +
-Testing Library pour le frontend React — appliqués selon le cycle RED-GREEN-REFACTOR imposé par
-le hook `before_implement` (Superpowers `test-driven-development`)
+Testing Library pour le frontend Next.js — appliqués selon le cycle RED-GREEN-REFACTOR imposé
+par le hook `before_implement` (Superpowers `test-driven-development`)
 
 **Target Platform**: Conteneurs Linux (Docker), orchestrés via Kubernetes en cible finale (S11) ;
 pipelines CI sur Jenkins ou GitLab CI (S8-S10)
@@ -55,7 +63,7 @@ séance du module (11 séances)
 | Principe | Statut | Justification |
 |---|---|---|
 | I. Test-First (NON-NEGOTIABLE) | PASS | `/speckit-implement` délègue à `before_implement` (superpowers-bridge → subagent-driven-development + test-driven-development) : un sous-agent par tâche, cycle RED-GREEN-REFACTOR obligatoire avant tout code de production. |
-| II. Simplicité et YAGNI | PASS | Structure à deux projets (backend Strapi / frontend React) justifiée par la nature même du produit décrit (API + front séparés dans la spec source) ; pas de couche d'abstraction additionnelle (pas de microservices, pas de BFF) à ce stade. |
+| II. Simplicité et YAGNI | PASS | Structure à deux projets (backend Strapi / frontend Next.js) justifiée par la nature même du produit décrit (API + front séparés dans la spec source) ; pas de couche d'abstraction additionnelle (pas de microservices, pas de BFF) à ce stade. Next.js n'introduit pas de complexité supplémentaire par rapport à React+Vite — même bibliothèque de composants, juste un outillage de build/routage différent. |
 | III. Infrastructure as Code et Reproductibilité | PASS | Dockerfile + docker-compose.yml versionnés dès S5-S7 ; pipeline CI versionné (Jenkinsfile ou .gitlab-ci.yml) ; manifests Kubernetes versionnés pour S11. Aucune étape manuelle de déploiement. |
 | IV. Sécurité par défaut | PASS | Secrets (DB, SMTP, JWT Strapi) injectés via variables d'environnement/CI secrets, jamais commités ; accès aux questionnaires privés par lien signé unique (FR-017), vérifié côté serveur. |
 | V. Observabilité | PASS (avec ajout technique) | Le endpoint de santé n'est pas un besoin utilisateur donc absent de spec.md à dessein, mais est ajouté ici comme exigence technique transverse : l'API Strapi expose `GET /health` (voir contracts/), et les logs applicatifs sont structurés (JSON) sur stdout pour être collectés par la CI/les conteneurs. |
@@ -96,19 +104,24 @@ backend/
     └── integration/          # scénarios de bout en bout (creation → réponse → résultats)
 
 frontend/
-├── src/
-│   ├── components/
-│   ├── pages/                # création, remplissage, résultats
-│   └── services/              # client API vers le backend Strapi
+├── app/                        # Next.js App Router
+│   ├── questionnaires/create/  # création (US1)
+│   ├── q/[token]/               # remplissage public ou par jeton d'invitation (US2)
+│   └── questionnaires/[id]/results/  # résultats (US3)
+├── components/
+├── services/                   # client API vers le backend Strapi
 └── tests/
     ├── unit/
     └── integration/
 ```
 
 **Structure Decision**: Option 2 (application web backend/frontend séparés), conforme à la
-description source ("API Strapi" + "Front : create, view, results pages"). Chaque type de
-contenu Strapi (questionnaire, question, response) correspond à une entité de
-`spec.md`/`data-model.md` ; le frontend React ne parle au backend que via son API REST.
+description source ("API Strapi" + "Front : create, view, results pages"), avec le frontend
+implémenté en Next.js (App Router) depuis l'amendement du 2026-09-19 — voir
+`docs/superpowers/specs/2026-09-19-questionnaire-platform-design.md`. Chaque type de contenu
+Strapi (questionnaire, question, response) correspond à une entité de
+`spec.md`/`data-model.md` ; le frontend Next.js ne parle au backend que via son API REST (pas
+d'accès direct à la base de données depuis le frontend).
 
 ## Complexity Tracking
 

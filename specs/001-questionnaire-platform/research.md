@@ -2,14 +2,19 @@
 
 ## Frontend framework
 
-- **Decision**: React 18 + Vite.
-- **Rationale**: La spec source ne précise pas de framework front ; React est l'écosystème le
-  plus documenté pour consommer une API Strapi (Strapi publie ses propres guides et starters
-  React), ce qui réduit le risque pédagogique sur un module de 11 séances. Vite donne un build
-  rapide, aligné avec S3 "build npm".
-- **Alternatives considered**: Vue 3 (bon support Strapi mais moins de ressources
-  pédagogiques francophones alignées sur ce module) ; Next.js (apporte du SSR non requis par la
-  spec — violerait le principe II Simplicité/YAGNI pour ce périmètre).
+- **Decision**: Next.js (App Router). *(Amendement 2026-09-19 — remplace React 18 + Vite, voir
+  `docs/superpowers/specs/2026-09-19-questionnaire-platform-design.md`.)*
+- **Rationale**: Choix tranché explicitement par l'utilisateur lors du brainstorming
+  Superpowers du 2026-09-19, en gardant Strapi côté backend. Next.js reste sur React comme
+  bibliothèque de composants (pas de rupture d'écosystème) tout en colocalisant pages et
+  éventuelle logique serveur légère (Route Handlers / Server Actions) dans un seul projet
+  frontend ; Strapi publie également des guides d'intégration Next.js.
+- **Alternatives considered** *(évaluation initiale, avant amendement)* : React 18 + Vite
+  (choix initial — SPA pure, pas de SSR) ; Vue 3 (bon support Strapi mais moins de ressources
+  pédagogiques francophones alignées sur ce module). Le SSR de Next.js, jugé non requis par la
+  spec dans l'évaluation initiale, n'est pas devenu une exigence fonctionnelle avec ce
+  changement : son usage reste optionnel page par page (voir "Flux de données" dans le document
+  de design) et ne remet pas en cause le principe II Simplicité/YAGNI.
 
 ## Persistance
 

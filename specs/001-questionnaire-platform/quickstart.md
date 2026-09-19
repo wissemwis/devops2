@@ -4,6 +4,10 @@ Guide de validation manuelle de bout en bout, une fois l'implémentation des Use
 terminée. Ne contient pas de code d'implémentation — voir `contracts/api.md` et
 `data-model.md` pour le détail.
 
+**Amendement 2026-09-19** : frontend Next.js (remplace React+Vite) — commandes `npm install`
+/ `npm run dev` inchangées, frontend servi par défaut sur `http://localhost:3000` (port par
+défaut Next.js, contre 5173 pour Vite).
+
 ## Prérequis
 
 - Node.js 20 LTS, Docker + Docker Compose.

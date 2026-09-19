@@ -1,0 +1,24 @@
+installed:
+- superpowers-bridge
+settings:
+  auto_execute_hooks: true
+hooks:
+  before_specify:
+  - extension: superpowers-bridge
+    command: speckit.superpowers-bridge.brainstorm
+    enabled: true
+    optional: true
+    priority: 10
+    prompt: Lancer le brainstorming Superpowers pour affiner l'idée avant de spécifier
+      ?
+    description: Delegates idea refinement to Superpowers brainstorming
+    condition: null
+  before_implement:
+  - extension: superpowers-bridge
+    command: speckit.superpowers-bridge.tdd-implement
+    enabled: true
+    optional: false
+    priority: 10
+    prompt: Execute speckit.superpowers-bridge.tdd-implement?
+    description: Delegates task execution to Superpowers TDD + subagent-driven-development
+    condition: null

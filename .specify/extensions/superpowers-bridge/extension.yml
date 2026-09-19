@@ -1,0 +1,37 @@
+schema_version: "1.0"
+
+extension:
+  id: superpowers-bridge
+  name: "Superpowers Bridge"
+  version: "0.1.0"
+  description: "Delegates spec refinement to Superpowers brainstorming and implementation to Superpowers TDD + subagent-driven-development"
+  author: "Wissem Hamza"
+  license: MIT
+
+requires:
+  speckit_version: ">=0.2.0"
+
+provides:
+  commands:
+    - name: speckit.superpowers-bridge.brainstorm
+      file: commands/speckit.superpowers-bridge.brainstorm.md
+      description: "Refine the raw feature idea via Superpowers brainstorming before /speckit.specify writes spec.md"
+    - name: speckit.superpowers-bridge.tdd-implement
+      file: commands/speckit.superpowers-bridge.tdd-implement.md
+      description: "Execute tasks.md via Superpowers subagent-driven-development + test-driven-development"
+
+hooks:
+  before_specify:
+    command: speckit.superpowers-bridge.brainstorm
+    optional: true
+    prompt: "Lancer le brainstorming Superpowers pour affiner l'idée avant de spécifier ?"
+    description: "Delegates idea refinement to Superpowers brainstorming"
+  before_implement:
+    command: speckit.superpowers-bridge.tdd-implement
+    optional: false
+    description: "Delegates task execution to Superpowers TDD + subagent-driven-development"
+
+tags:
+  - "superpowers"
+  - "tdd"
+  - "brainstorming"

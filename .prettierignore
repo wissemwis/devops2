@@ -1,0 +1,20 @@
+# Shared Prettier ignore for the whole repo (backend/ + frontend/), per T004.
+# A single root file is used instead of one per project since both projects
+# exclude the same kinds of generated/vendored paths — see CLAUDE.md /
+# specs/001-questionnaire-platform/tasks.md T004 for context.
+
+node_modules/
+package-lock.json
+
+# backend (Strapi)
+backend/dist/
+backend/build/
+backend/.cache/
+backend/.tmp/
+backend/.strapi/
+backend/database/
+
+# frontend (Next.js)
+frontend/.next/
+frontend/out/
+frontend/next-env.d.ts

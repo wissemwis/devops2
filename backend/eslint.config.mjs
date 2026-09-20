@@ -1,17 +1,17 @@
-import js from "@eslint/js";
-import tseslint from "typescript-eslint";
+import js from '@eslint/js';
+import tseslint from 'typescript-eslint';
 
 export default tseslint.config(
   {
     ignores: [
-      "node_modules/**",
-      "build/**",
-      "dist/**",
-      ".cache/**",
-      ".tmp/**",
-      ".strapi/**",
-      "public/**",
-      "database/**",
+      'node_modules/**',
+      'build/**',
+      'dist/**',
+      '.cache/**',
+      '.tmp/**',
+      '.strapi/**',
+      'public/**',
+      'database/**',
     ],
   },
   js.configs.recommended,
@@ -21,9 +21,9 @@ export default tseslint.config(
       // Strapi generates content-type schemas/controllers with common
       // placeholder patterns (unused req/res params, etc.) — keep this
       // minimal and non-opinionated per constitution Principle II (YAGNI).
-      "@typescript-eslint/no-unused-vars": [
-        "warn",
-        { argsIgnorePattern: "^_", varsIgnorePattern: "^_" },
+      '@typescript-eslint/no-unused-vars': [
+        'warn',
+        { argsIgnorePattern: '^_', varsIgnorePattern: '^_' },
       ],
     },
   },

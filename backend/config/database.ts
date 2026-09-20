@@ -7,7 +7,7 @@ const config = ({ env }: Core.Config.Shared.ConfigParams): Core.Config.Database 
 
   if (!isDatabaseClientKind(client)) {
     throw new Error(
-      `Unsupported DATABASE_CLIENT: ${client}. Use "postgres", "mysql", or "sqlite".`
+      `Unsupported DATABASE_CLIENT: ${client}. Use "postgres", "mysql", or "sqlite".`,
     );
   }
 

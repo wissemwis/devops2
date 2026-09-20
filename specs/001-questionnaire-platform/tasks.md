@@ -30,7 +30,7 @@ of each story.
 ## Phase 1: Setup (Shared Infrastructure)
 
 - [X] T001 Create project structure per plan.md: `backend/`, `frontend/` at repository root *(complété avant l'amendement Next.js du 2026-09-19 ; `frontend/` restructuré manuellement vers `app/`/`components/`/`services/` pour rester conforme à plan.md — voir commit de l'amendement)*
-- [ ] T002 Initialize backend Strapi 5 project in `backend/` with the TypeScript template (Node.js 20 LTS) per plan.md Primary Dependencies
+- [X] T002 Initialize backend Strapi 5 project in `backend/` with the TypeScript template (Node.js 20 LTS) per plan.md Primary Dependencies *(scaffolded via `create-strapi-app@5.54.0 --ts --dbclient sqlite`, merged into the existing `backend/` skeleton from T001; verified by `tests/structure/test_backend_init.sh` and `npm run build`; task-scoped reviewer subagent ran retroactively against commit `9965ce0` per the `before_implement` review gate — verdict PASS, no blocking defects)*
 - [ ] T003 [P] Initialize frontend Next.js project in `frontend/` (App Router, TypeScript enabled via `tsconfig.json`) per plan.md Primary Dependencies
 - [ ] T004 [P] Configure linting/formatting (ESLint + Prettier) for `backend/` and `frontend/`
 - [ ] T005 Create `.env.example` documenting DB, JWT and SMTP variables per plan.md Constraints (Principe IV — aucun secret en clair)

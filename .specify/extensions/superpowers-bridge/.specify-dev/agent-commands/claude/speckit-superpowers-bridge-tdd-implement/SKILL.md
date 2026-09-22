@@ -172,11 +172,11 @@ verdicts) after each.
    effect outside this worktree (merge, push to a shared branch, publish), or
    a plan too broken to proceed — and say why.
 10. Once every in-scope task is complete, run the whole-branch review
-    `subagent-driven-development` prescribes. Do NOT delete this plan's SDD
-    workspace afterward, even though SDD's own Finish step says to — some
-    `.superpowers/sdd/tasks/*` files are git-tracked historically in this
-    repo, so leave the workspace in place. Still collect the "Rulings I
-    made" list per SDD's Finish section, then invoke
+    `subagent-driven-development` prescribes, then follow SDD's Finish
+    section: collect the "Rulings I made" list, make sure each ruling is also
+    recorded somewhere durable (the `tasks.md` annotation and the Jira done
+    comment) — `.superpowers/` is git-ignored, so the ledger is local scratch —
+    delete only this plan's SDD workspace directory, then invoke
     `superpowers:finishing-a-development-branch` — its push/PR/merge options
     remain gated by the human (the "only stop for ... a push to a shared
     branch, publish" rule in step 9 above already covers it). If a PR is

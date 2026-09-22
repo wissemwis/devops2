@@ -55,7 +55,7 @@ steps to the [Superpowers](https://github.com/obra/superpowers-marketplace) plug
 - **`before_implement`** (mandatory hook, `optional: false` — see the HARD RULE above, this is
   not optional in practice either) → `speckit.superpowers-bridge.tdd-implement`
   → Superpowers `brainstorming` → `writing-plans` → `subagent-driven-development` +
-  `test-driven-development` (bridge v0.5.0). **Tasks are selected from Jira** (project `D2`
+  `test-driven-development` (bridge v0.5.1). **Tasks are selected from Jira** (project `D2`
   on wissemhamza.atlassian.net, settings in `.specify/extensions/superpowers-bridge/jira.yml`,
   one Story per `tasks.md` item, summary prefixed with its `Txxx` ID); `tasks.md` stays the
   trace. Once per `/speckit-implement` run, before any dispatch: (1) determines this run's scope
@@ -98,11 +98,12 @@ The canonical command order for this feature (already run once; re-run only to a
 (`scripts/task-brief`) expect Superpowers' own plan format (`### Task N` headings), not Spec
 Kit's `tasks.md` checklist format (`- [ ] T001 ...`). Since bridge v0.4.0 this is resolved by
 running SDD on the `writing-plans` plan (not on `tasks.md`), so `task-brief`/`review-package`
-work natively. T001, T005, T009 and T010 have hand-written briefs in `.superpowers/sdd/tasks/`
-from runs before v0.4.0 introduced `writing-plans`; T002-T008 predate this ledger entirely —
-their record is the `tasks.md` inline annotation plus git history, not a brief file. The
-`subagent-driven-development` workspace (`.superpowers/sdd/`) self-regenerates a `.gitignore`
-excluding itself on every run.
+work natively. `.superpowers/` (SDD's workspace: ledgers, briefs, reports, review packages) is
+git-ignored and was untracked on 2026-09-23 — it is local scratch. The durable record of every
+task is its `tasks.md` inline annotation, its Jira Story comments, and git history; T001-T010's
+hand-written briefs survive only in git history (T001/T005) or locally. The
+`subagent-driven-development` workspace self-regenerates a `.gitignore` excluding itself on
+every run; the root `.gitignore` already covers it.
 
 ## Current state
 

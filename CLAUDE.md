@@ -18,7 +18,8 @@ Before touching a task's implementation:
    reports PASS/FAIL — dispatched with the Agent tool if the Superpowers skills aren't directly
    invocable — **before** the task's checkbox in `tasks.md` is changed from `[ ]` to `[X]`.
 3. A task is only `[X]` once that reviewer subagent's verdict is recorded (inline annotation in
-   `tasks.md`, same style as T001/T002). No verdict recorded → the box stays `[ ]`, however
+   `tasks.md`, same style as T001/T002, naming its Jira key). Its Jira Story (project `D2`) moves
+   to `Terminé` at the same time, never earlier. No verdict recorded → the box stays `[ ]`, however
    confident the implementation looks.
 
 If you find yourself about to `Write`/`Edit` files under `backend/` or `frontend/` to satisfy a
@@ -54,10 +55,14 @@ steps to the [Superpowers](https://github.com/obra/superpowers-marketplace) plug
 - **`before_implement`** (mandatory hook, `optional: false` — see the HARD RULE above, this is
   not optional in practice either) → `speckit.superpowers-bridge.tdd-implement`
   → Superpowers `brainstorming` → `writing-plans` → `subagent-driven-development` +
-  `test-driven-development` (bridge v0.4.1). Once per `/speckit-implement` run, before any
-  dispatch: (1) determines this run's scope from the hook's own arguments, else the invoking
-  `/speckit-implement`'s user input, else asks the human (never silently "every unchecked
-  task"); (2) brainstorms the in-scope task(s) interactively with the human (within the
+  `test-driven-development` (bridge v0.5.0). **Tasks are selected from Jira** (project `D2`
+  on wissemhamza.atlassian.net, settings in `.specify/extensions/superpowers-bridge/jira.yml`,
+  one Story per `tasks.md` item, summary prefixed with its `Txxx` ID); `tasks.md` stays the
+  trace. Once per `/speckit-implement` run, before any dispatch: (1) determines this run's scope
+  from the hook's own arguments, else the invoking `/speckit-implement`'s user input, else asks
+  the human (never silently "every open issue") — "next task" is the first `À faire` Story by
+  Jira rank whose `tasks.md` item is unchecked — then moves each in-scope issue to `En cours`
+  with a comment, and works on a new branch `claude/task-<jira-key>-<slug>` (one PR per run); (2) brainstorms the in-scope task(s) interactively with the human (within the
   already-approved spec/plan — it proposes amendments rather than reopening them; a `tasks.md`
   item is always classified bounded or architectural, never a spike) and commits the
   approved design to `docs/superpowers/specs/YYYY-MM-DD-<task-ids>-<topic>-design.md`;
@@ -66,7 +71,9 @@ steps to the [Superpowers](https://github.com/obra/superpowers-marketplace) plug
   `tasks.md` ID it implements, saved to `docs/superpowers/plans/YYYY-MM-DD-<task-ids>-<topic>.md`
   and shown to the human for approval; (4) executes that plan with a fresh implementer subagent
   per plan task, strict RED-GREEN-REFACTOR, and a task-scoped reviewer subagent before a task is
-  marked `[X]`. **This hook replaces `/speckit-implement`'s own Outline steps 3-9 entirely**: once
+  marked `[X]` — at which point its Jira issue moves to `Terminé` with a comment carrying the
+  reviewer verdict (and, later, the PR link). If Jira is unreachable the hook stops rather than
+  falling back to `tasks.md`. **This hook replaces `/speckit-implement`'s own Outline steps 3-9 entirely**: once
   it returns, the invoking `/speckit-implement` does not implement, review, or mark `[X]` any task
   itself — it proceeds straight to its Mandatory Post-Execution Hooks and Completion Report. For a
   task marked **`[UI]`** in `tasks.md` (creates/modifies a page or component under `frontend/`),

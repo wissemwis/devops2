@@ -1,0 +1,11 @@
+# Jira settings read by speckit.superpowers-bridge.tdd-implement (bridge >= 0.5.0).
+# Jira selects the tasks to implement; tasks.md stays the trace. No credentials here:
+# access goes through the Atlassian connector of the Claude Code session.
+site: https://wissemhamza.atlassian.net
+project_key: D2
+issue_type: Story
+# Issue summaries start with the tasks.md ID, e.g. "T011 [P] Contract test ...".
+task_id_pattern: '^(T\d{3})\b'
+todo_status: "À faire"
+in_progress_transition: "En cours"
+done_transition: "Terminé"

@@ -250,3 +250,29 @@ pédagogique Docker/CI/Kubernetes du module.
 6. Migration auto-hébergée (Phase 7), en parallèle et selon le calendrier de séances S5-S11 de
    la constitution — n'attend pas la fin de la Phase 6.
 7. Polish (Phase 8), après validation du déploiement V1 en ligne.
+
+---
+
+## Phase 9: Convergence
+
+> Ajoutée le 2026-09-23 par `/speckit-converge`, alors que seules T001–T010 étaient implémentées :
+> ne liste que le travail qu'aucune tâche T001–T059 ne couvre, plus les écarts relevés dans le
+> code existant. Les tâches marquées CRITICAL passent avant la suite de la Phase 3 (US1).
+
+- [ ] T060 CRITICAL Expose a health endpoint (`GET /api/health` → `{"status":"ok"}`) and structured JSON logs on stdout for the Next.js frontend in `frontend/app/api/health/route.ts` and the frontend logging setup, so both deployed services meet Principe V (T057 probes need it) per Constitution V (contradicts)
+- [ ] T061 CRITICAL Replace the T007 `role` enum with native `users-permissions` roles `auteur`, `repondant`, `administrateur` (remove `backend/src/extensions/users-permissions/content-types/user/schema.json`, create the roles in `backend/src/index.ts` bootstrap, restore the native `role` relation) and amend `data-model.md` Utilisateur.role accordingly, per FR-016 (contradicts)
+- [ ] T062 Seed role permissions (which role may call which contracts/api.md endpoint) and, in development only (env-driven, no secret in the repository), a test `auteur` account used by quickstart.md Scénario 1, in `backend/src/index.ts` bootstrap per US1/AC1 (missing) (depends on T061)
+- [ ] T063 [UI] Frontend: author login page and authenticated session (Strapi `POST /api/auth/local` JWT) in `frontend/app/login/page.tsx` + `frontend/services/authService.ts` per US1/AC1 (missing) (depends on T062)
+- [ ] T064 Amend `contracts/api.md` with question reorder and delete endpoints, add their contract tests in `backend/tests/contract/`, implement them in `backend/src/api/question/`, and wire T023's reorder/delete actions to them, per FR-002 (missing) (depends on T019)
+- [ ] T065 Log request path only (or redact the invitation token query parameter) in backend request logs before any invitation-token route exists, per Constitution IV (contradicts) (before T034, T035)
+- [ ] T066 Contract test: `POST /api/questionnaires/:id/reponses` and `…/submit` return `403` on a questionnaire whose `statut` is `fermé`, including one closed between page load and submission, in `backend/tests/contract/reponses_closed.test.ts` per FR-006, US1/AC3 and spec Edge Cases (partial)
+- [ ] T067 Define and test how a returning respondent resumes an `en_cours` response (via the invitation token for a private questionnaire; a client-kept response id for a public one), in `backend/tests/contract/` + T036/T038 per FR-009, US2/AC4 (partial)
+- [ ] T068 Validate question image format and size (allowed MIME types, max size; clear error on rejection) with a contract test, per FR-003 and spec Edge Cases (partial) (depends on T017, T019)
+- [ ] T069 Contract tests for FR-016 authorization: an `administrateur` can close, view results, export and send reminders on any questionnaire; an `auteur` gets `403` on a questionnaire they do not own, in `backend/tests/contract/authorization.test.ts` per FR-016 (partial) (depends on T061, T062)
+- [ ] T070 Performance test: `GET /api/questionnaires/:id/resultats` answers in under 2 s for a questionnaire with 1000 complete responses, in `backend/tests/integration/resultats_performance.test.ts` per SC-003 (partial) (depends on T045)
+- [ ] T071 Name every Jest test file `<name>.test.ts` (plan.md Testing) instead of the `test_<name>.ts` paths written in T011–T015, T025–T030 and T040–T044, keeping their directories, per plan: Testing decision (contradicts)
+- [ ] T072 Make backend container stdout JSON-only: disable or route Strapi's startup banner (`console.log` in `@strapi/core` startup logger) through the JSON logger, per Constitution V (partial)
+- [ ] T073 Replace the static `tests/structure/test_health_route.sh` check with an in-process test of the bare `GET /health` (200 and 503) once the Jest harness exists, per Constitution V (partial) (depends on T011)
+- [ ] T074 Document `UID`/`GID` in `.env.example` (or drop the parameterised `user:` framing) so `docker-compose.yml` bind-mounted files match the host user, per Constitution III (partial)
+- [ ] T075 Add `backend/.strapi-updater.json` to `.prettierignore` so `npm run format:check` passes after a Strapi build or start, per T004 (partial)
+- [ ] T076 Review the root `index.html` ("Coming Soon" page, not in spec or plan): justify it in plan.md or remove it (unrequested)

@@ -79,12 +79,26 @@ reports) via `git add -f`, so future dispatches need the same `-f`.
 
 ## Current state
 
-**T001** and **T002** of 59 tasks in `specs/001-questionnaire-platform/tasks.md` are done: the
-`backend/`/`frontend/` directory skeleton exists (T001, matching `plan.md` § Project Structure),
-and `backend/` is now a real Strapi 5 TypeScript project (`create-strapi-app@5.54.0`, SQLite for
-local dev per research.md), with `npm install`/`npm run build` verified working. `frontend/` is
-still empty except `.gitkeep` files and `tests/structure/test_layout.sh` — do not assume any
-frontend build command works until T003 lands it.
+**T001–T008** of 59 tasks in `specs/001-questionnaire-platform/tasks.md` are done (each with a
+recorded reviewer-subagent verdict); T009 (JSON logging in `backend/config/logger.ts`) is in
+progress. What exists today:
+
+- `backend/` — Strapi 5 TypeScript project (`create-strapi-app@5.54.0`, T002). SQLite by default
+  for local dev, PostgreSQL via `DATABASE_CLIENT=postgres` with the `pg` driver installed (T006).
+  User content-type extended with a business `role` enum (T007). `GET /health` → 200
+  `{"status":"ok"}` / 503 `{"status":"degraded","reason":...}`, registered at the bare `/health`
+  path via `strapi.server.routes()` in `src/index.ts` as well as `/api/health` (T008).
+- `frontend/` — Next.js App Router + TypeScript project (`create-next-app`, T003); `npm run build`
+  works. No application pages yet.
+- Tooling — ESLint + Prettier in both projects (`npm run lint`, `npm run format:check`, T004);
+  root `.env.example` documents DB/JWT/SMTP/API-URL variables (T005).
+- Tests — so far only shell scripts under `tests/structure/*.sh` (run each one; all should pass).
+  No Jest/contract/integration test harness exists yet (starts with T011+).
+
+**Open risk carried forward from T007** (see its `tasks.md` annotation): the custom `role` enum
+overwrites Strapi's built-in `users-permissions` `role` relation, which breaks authenticated
+permission resolution. Resolve it (rename the field, or amend `data-model.md` + `plan.md`
+Complexity Tracking) before any login/auth/permission-gated task.
 
 ## Source of truth for requirements and design
 

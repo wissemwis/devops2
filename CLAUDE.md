@@ -53,8 +53,13 @@ steps to the [Superpowers](https://github.com/obra/superpowers-marketplace) plug
   `docs/superpowers/specs/YYYY-MM-DD-<topic>-design.md` in addition to a condensed brief.
 - **`before_implement`** (mandatory hook, `optional: false` — see the HARD RULE above, this is
   not optional in practice either) → `speckit.superpowers-bridge.tdd-implement`
-  → Superpowers `subagent-driven-development` + `test-driven-development`. Executes `tasks.md`
-  with a fresh implementer subagent per task, strict RED-GREEN-REFACTOR, and a task-scoped
+  → Superpowers `brainstorming`, then `subagent-driven-development` + `test-driven-development`
+  (bridge v0.3.0). Once per `/speckit-implement` run, before any dispatch, it brainstorms the
+  in-scope task(s) interactively with the human (within the already-approved spec/plan — it
+  proposes amendments rather than reopening them), commits the approved design to
+  `docs/superpowers/specs/YYYY-MM-DD-<task-ids>-<topic>-design.md`, and skips `writing-plans`
+  (`tasks.md` is the plan). Then it executes the in-scope tasks
+  with a fresh implementer subagent per task (design doc path passed to implementer and reviewer), strict RED-GREEN-REFACTOR, and a task-scoped
   reviewer subagent before a task is marked `[X]`. For a task marked **`[UI]`** in `tasks.md`
   (creates/modifies a page or component under `frontend/`), the dispatched subagent must
   *also* invoke the `impeccable` skill (`.agents/skills/impeccable/`) for the visual/UX/

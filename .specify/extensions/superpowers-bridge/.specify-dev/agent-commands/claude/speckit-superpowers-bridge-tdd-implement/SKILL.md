@@ -15,24 +15,43 @@ Replace /speckit.implement's default single-context task loop with Superpowers'
 full workflow on the tasks this run will execute: an interactive
 `brainstorming` session, a `writing-plans` implementation plan, then
 `subagent-driven-development` on that plan — a fresh implementer subagent per
-plan task, enforced RED-GREEN-REFACTOR, and a two-stage review after each.
+plan task, enforced RED-GREEN-REFACTOR, and one task review (spec compliance
++ code quality — `subagent-driven-development`'s single review with two
+verdicts) after each.
 
 ## Behavior
 
-1. From FEATURE_DIR, read `tasks.md`, `plan.md`, `spec.md`, and — if present —
-   `.specify/memory/constitution.md`. Record their absolute paths.
-2. **Determine this run's scope** from the arguments below (e.g. "next task"
-   = the first unchecked task in `tasks.md` in dependency order; a list of IDs
-   = those tasks; empty = every unchecked task).
+1. FEATURE_DIR is the feature directory the invoking `/speckit-implement`
+   already resolved (its `check-prerequisites.sh --json` output, e.g.
+   `specs/001-questionnaire-platform/`). From FEATURE_DIR, read `tasks.md`,
+   `plan.md`, `spec.md`, and — if present — `.specify/memory/constitution.md`.
+   Record their absolute paths.
+2. **Determine this run's scope**, in this order — never silently default to
+   "every unchecked task":
+   - This command's own arguments below ($ARGUMENTS), if non-empty.
+   - Else, the user input given to the invoking `/speckit-implement`, if
+     non-empty.
+   - Else, ASK the human what to run, offering "next unchecked task" (the
+     first unchecked task in `tasks.md` in dependency order) as the default,
+     and wait for their answer.
+   A list of task IDs scopes the run to those tasks.
 
    $ARGUMENTS
 
-3. **Brainstorm the scope — once per run, before any dispatch.** Invoke the
+3. **Git safety, before brainstorming touches anything.** If the current
+   branch is `main` or `master`, create and switch to
+   `claude/<task-ids>-<slug>` before doing anything else in this hook;
+   otherwise stay on the current feature branch. Once
+   `subagent-driven-development`'s workspace exists (step 6), note there that
+   its worktree setup may reuse this branch in place — this is a standing
+   fact about how this repo runs the hook, not a fresh ruling to re-make
+   every run.
+4. **Brainstorm the scope — once per run, before any dispatch.** Invoke the
    Superpowers `brainstorming` skill on the in-scope task(s): their exact
    `tasks.md` text plus the absolute paths of `spec.md`, `plan.md`,
    `constitution.md` and, if present, `research.md`, `data-model.md`,
    `contracts/` and `quickstart.md`. Follow the skill's own process (classify
-   spike/bounded/architectural, clarifying questions one at a time, 2-3
+   bounded/architectural, clarifying questions one at a time, 2-3
    approaches, design in sections, human approval). Constraints that override
    brainstorming's defaults:
    - `spec.md`, `plan.md` and the constitution are already-approved design.
@@ -40,20 +59,26 @@ plan task, enforced RED-GREEN-REFACTOR, and a two-stage review after each.
      it does not reopen them. If the session surfaces a genuine conflict with
      them, say so and propose an explicit amendment (e.g. a dated `plan.md`
      amendment or a Complexity Tracking entry) — never diverge silently.
-   - Whatever path the skill classifies, persist the approved design to
+   - A `tasks.md` item is never a spike: it is already-scoped implementation
+     work behind an approved spec and plan, never a bare feasibility
+     question. Classify it bounded or architectural — never spike.
+   - Whatever path brainstorming classifies (bounded or architectural), the
+     next step is step 5 below (`writing-plans`). This explicitly overrides
+     the bounded path's normal terminal state ("implementation proceeds
+     directly through the normal development workflow; no plan document").
+     `writing-plans` is never skipped for a `tasks.md` item, on either path.
+     Do not chain into any other skill.
+   - Whatever path is taken, persist the approved design to
      `docs/superpowers/specs/YYYY-MM-DD-<task-ids>-<topic>-design.md` and
      commit it (stage it by path). A bounded task gets a short document; it
      still gets one, because implementer and reviewer subagents can only read
      files.
-   - Once the design is approved, brainstorming's normal terminal step —
-     invoking `writing-plans` — is exactly step 4. Do not chain into any other
-     skill.
    - Do NOT create, modify or delete application source files, tests or
      `tasks.md` during brainstorming.
-4. **Plan — invoke the Superpowers `writing-plans` skill** on the approved
+5. **Plan — invoke the Superpowers `writing-plans` skill** on the approved
    design. Constraints that override its defaults:
    - Save to `docs/superpowers/plans/YYYY-MM-DD-<task-ids>-<topic>.md`; its
-     `**Spec:**` line names the step-3 design document and `spec.md`; its
+     `**Spec:**` line names the step-4 design document and `spec.md`; its
      Global Constraints copy verbatim the binding values from `spec.md`,
      `plan.md`, `contracts/` and the constitution that the in-scope tasks
      touch.
@@ -66,21 +91,27 @@ plan task, enforced RED-GREEN-REFACTOR, and a two-stage review after each.
    - Execution method is already supplied: **Subagent-driven**. Still show
      the human the saved plan and ask "Does it capture what you want?";
      incorporate corrections, commit the plan (stage it by path), then
-     continue at step 5.
-5. Invoke the Superpowers `subagent-driven-development` skill with the step-4
+     continue at step 6.
+6. Invoke the Superpowers `subagent-driven-development` skill with the step-5
    plan file as its PLAN_FILE (so its `task-brief`, `review-package` and
    per-plan ledger work natively).
-6. For every task dispatched to a fresh subagent, the subagent's prompt MUST
+7. For every task dispatched to a fresh subagent, the plan text itself must
+   reach the subagent only through SDD's own channel — its task-brief output
+   plus the plan's Global Constraints block copied verbatim — never as a
+   handed-over path to the step-5 plan document. The dispatch prompt MUST
    explicitly include:
    - The `tasks.md` ID the plan task implements, and that item's exact
      description and file paths as written in `tasks.md`.
+   - The absolute path to this task's brief, produced by SDD's
+     `scripts/task-brief` (per SDD step "Dispatch the implementer") —
+     introduced as "read this first — it is your requirements, with the
+     exact values to use verbatim".
+   - The absolute path to the design document approved in step 4.
    - The absolute paths to `spec.md`, `plan.md`, `tasks.md` and
-     `constitution.md` collected in step 1, **and to the design document
-     approved in step 3 and the plan written in step 4**, which are binding
-     for that task (subagents never
-     inherit this session's context, so nothing reaches them unless it is
-     written into their prompt). The task reviewer gets both paths too and
-     checks compliance against them.
+     `constitution.md` collected in step 1, as reference reading only, with
+     an explicit instruction: "do not read the whole implementation plan
+     (the step-5 `writing-plans` document) — it reaches you only through the
+     task-brief above and the Global Constraints copied into this dispatch."
    - An instruction to read `constitution.md` before proposing any
      implementation approach.
    - An instruction to follow the Superpowers `test-driven-development` skill:
@@ -98,16 +129,34 @@ plan task, enforced RED-GREEN-REFACTOR, and a two-stage review after each.
      still governs the task's testable behavior (component rendering,
      interactions, API calls). A subagent working a UI task without invoking
      `impeccable` has not correctly executed the task.
-7. After each subagent completes, run the task review (spec compliance + code
-   quality) that `subagent-driven-development` prescribes. Mark a `tasks.md`
-   item `[X]` — with an inline annotation recording the reviewer verdict —
-   only once every plan task that names its ID has passed review.
-8. After the step-4 plan is approved, execute continuously without
+   The task reviewer's inputs are SDD's own — the brief file, the report
+   file, the review-package diff, and the plan's Global Constraints block —
+   plus the design-doc path from step 4; never the whole plan document
+   either.
+8. After each subagent completes, run the task review (spec compliance + code
+   quality, SDD's single review with two verdicts) that
+   `subagent-driven-development` prescribes. Mark a `tasks.md` item `[X]` —
+   with an inline annotation recording the reviewer verdict — only once every
+   plan task that names its ID has passed review.
+9. After the step-5 plan is approved, execute continuously without
    pausing between tasks to ask "should I continue?". Only stop for: an
    irreversible or destructive operation, a security-sensitive action, a side
    effect outside this worktree (merge, push to a shared branch, publish), or
    a plan too broken to proceed — and say why.
-9. Once every in-scope task is complete, run the whole-branch review
-   `subagent-driven-development` prescribes, then report: the design document
-   and plan paths, tasks completed, files touched, tests added, and any ruling you made
-   without stopping to ask.
+10. Once every in-scope task is complete, run the whole-branch review
+    `subagent-driven-development` prescribes. Do NOT delete this plan's SDD
+    workspace afterward, even though SDD's own Finish step says to — some
+    `.superpowers/sdd/tasks/*` files are git-tracked historically in this
+    repo, so leave the workspace in place. Still collect the "Rulings I
+    made" list per SDD's Finish section, then invoke
+    `superpowers:finishing-a-development-branch` — its push/PR/merge options
+    remain gated by the human (the "only stop for ... a push to a shared
+    branch, publish" rule in step 9 above already covers it). Then report:
+    the design document and plan paths, tasks completed, files touched,
+    tests added, and any ruling you made without stopping to ask.
+11. **Terminal instruction.** This hook REPLACES `/speckit-implement`'s
+    Outline steps 3-9 in full. When this hook returns, the invoking
+    `/speckit-implement` MUST NOT implement, review, or mark `[X]` any task
+    itself — all of that happened in the steps above. It proceeds directly
+    to its own "Mandatory Post-Execution Hooks" (`after_implement`) section
+    and then its Completion Report.

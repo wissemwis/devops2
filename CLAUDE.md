@@ -54,25 +54,35 @@ steps to the [Superpowers](https://github.com/obra/superpowers-marketplace) plug
 - **`before_implement`** (mandatory hook, `optional: false` — see the HARD RULE above, this is
   not optional in practice either) → `speckit.superpowers-bridge.tdd-implement`
   → Superpowers `brainstorming` → `writing-plans` → `subagent-driven-development` +
-  `test-driven-development` (bridge v0.4.0). Once per `/speckit-implement` run, before any
-  dispatch: (1) brainstorms the in-scope task(s) interactively with the human (within the
-  already-approved spec/plan — it proposes amendments rather than reopening them) and commits the
+  `test-driven-development` (bridge v0.4.1). Once per `/speckit-implement` run, before any
+  dispatch: (1) determines this run's scope from the hook's own arguments, else the invoking
+  `/speckit-implement`'s user input, else asks the human (never silently "every unchecked
+  task"); (2) brainstorms the in-scope task(s) interactively with the human (within the
+  already-approved spec/plan — it proposes amendments rather than reopening them; a `tasks.md`
+  item is always classified bounded or architectural, never a spike) and commits the
   approved design to `docs/superpowers/specs/YYYY-MM-DD-<task-ids>-<topic>-design.md`;
-  (2) runs `writing-plans` on it, scoped to exactly those `tasks.md` items, each `### Task N:`
-  heading naming the `tasks.md` ID it implements, saved to
-  `docs/superpowers/plans/YYYY-MM-DD-<task-ids>-<topic>.md` and shown to the human for approval;
-  (3) executes that plan with a fresh implementer subagent per plan task (design doc + plan paths
-  passed to implementer and reviewer), strict RED-GREEN-REFACTOR, and a task-scoped
-  reviewer subagent before a task is marked `[X]`. For a task marked **`[UI]`** in `tasks.md`
-  (creates/modifies a page or component under `frontend/`), the dispatched subagent must
-  *also* invoke the `impeccable` skill (`.agents/skills/impeccable/`) for the visual/UX/
-  accessibility work, alongside — not instead of — TDD: `impeccable` governs craft quality,
-  `test-driven-development` still governs testable behavior.
+  (3) runs `writing-plans` on it regardless of path — this is always the next step, even on the
+  bounded path — scoped to exactly those `tasks.md` items, each `### Task N:` heading naming the
+  `tasks.md` ID it implements, saved to `docs/superpowers/plans/YYYY-MM-DD-<task-ids>-<topic>.md`
+  and shown to the human for approval; (4) executes that plan with a fresh implementer subagent
+  per plan task, strict RED-GREEN-REFACTOR, and a task-scoped reviewer subagent before a task is
+  marked `[X]`. **This hook replaces `/speckit-implement`'s own Outline steps 3-9 entirely**: once
+  it returns, the invoking `/speckit-implement` does not implement, review, or mark `[X]` any task
+  itself — it proceeds straight to its Mandatory Post-Execution Hooks and Completion Report. For a
+  task marked **`[UI]`** in `tasks.md` (creates/modifies a page or component under `frontend/`),
+  the dispatched subagent must *also* invoke the `impeccable` skill (`.agents/skills/impeccable/`)
+  for the visual/UX/accessibility work, alongside — not instead of — TDD: `impeccable` governs
+  craft quality, `test-driven-development` still governs testable behavior.
 
 Do not run `/speckit-implement` expecting it to write code in the current context — it hands
 off to the hook above, which dispatches subagents. Subagents never inherit this session's
-context: any dispatch must explicitly pass the task's brief plus absolute paths to `spec.md`,
-`plan.md`, `tasks.md`, and `.specify/memory/constitution.md`.
+context: an implementer's dispatch carries the `tasks.md` ID line, the task-brief path (SDD's
+`scripts/task-brief` output — the single source of exact requirements), the design-doc path, and
+the absolute paths to `spec.md`/`plan.md`/`tasks.md`/`.specify/memory/constitution.md` as
+reference reading only. The `writing-plans` implementation plan document itself is never handed
+to a subagent as a path to read — it reaches the subagent only through the task-brief output and
+the plan's Global Constraints block copied verbatim into the dispatch. The reviewer gets the same
+SDD inputs (brief, report, review-package diff, Global Constraints) plus the design-doc path.
 
 The canonical command order for this feature (already run once; re-run only to amend):
 `/speckit-constitution` → `/speckit-specify` → `/speckit-plan` → `/speckit-tasks` → `/speckit-implement`.
@@ -81,9 +91,11 @@ The canonical command order for this feature (already run once; re-run only to a
 (`scripts/task-brief`) expect Superpowers' own plan format (`### Task N` headings), not Spec
 Kit's `tasks.md` checklist format (`- [ ] T001 ...`). Since bridge v0.4.0 this is resolved by
 running SDD on the `writing-plans` plan (not on `tasks.md`), so `task-brief`/`review-package`
-work natively. Runs before v0.4.0 (T001–T010) used hand-written briefs in
-`.superpowers/sdd/tasks/`. The `subagent-driven-development` workspace (`.superpowers/sdd/`)
-self-regenerates a `.gitignore` excluding itself on every run.
+work natively. T001, T005, T009 and T010 have hand-written briefs in `.superpowers/sdd/tasks/`
+from runs before v0.4.0 introduced `writing-plans`; T002-T008 predate this ledger entirely —
+their record is the `tasks.md` inline annotation plus git history, not a brief file. The
+`subagent-driven-development` workspace (`.superpowers/sdd/`) self-regenerates a `.gitignore`
+excluding itself on every run.
 
 ## Current state
 
@@ -101,10 +113,15 @@ recorded reviewer-subagent verdict). What exists today:
   works. No application pages yet.
 - Tooling — ESLint + Prettier in both projects (`npm run lint`, `npm run format:check`, T004);
   root `.env.example` documents DB/JWT/SMTP/API-URL variables (T005).
-- `docker-compose.yml` — local dev stack (T010): `db` (postgres:16, port 5432), `backend`
-  (node:20 + bind mount, `npm run develop`, :1337, healthcheck on `/health`), `frontend` (node:20,
-  `npm run dev`, :3000). No Dockerfiles yet (T055). `cp .env.example .env && docker compose up -d`.
-  Caveat: the bind mount leaves root-owned `backend/types/generated/` files on the host.
+- `docker-compose.yml` — local dev stack (T010, non-root/loopback fixes from the final-fix wave):
+  `db` (postgres:16, `127.0.0.1:5432`), `backend` (node:20 + bind mount, `npm run develop`,
+  `127.0.0.1:1337`, healthcheck on `/health`), `frontend` (node:20, `npm run dev`,
+  `127.0.0.1:3000`); every published port is loopback-only. `backend`/`frontend` run as the
+  image's non-root `node` user (uid:gid 1000:1000), via a one-shot `init` helper service that
+  chowns the named node_modules volumes first — verified live to leave no root-owned files under
+  `backend/`/`frontend/` on the host (the empty node_modules mountpoint directories that Docker's
+  daemon creates for the named volumes are the sole, expected exception — no real content lands
+  there). No Dockerfiles yet (T055). `cp .env.example .env && docker compose up -d`.
 - Tests — so far only shell scripts under `tests/structure/*.sh` (run each one; all should pass).
   No Jest/contract/integration test harness exists yet (starts with T011+).
 

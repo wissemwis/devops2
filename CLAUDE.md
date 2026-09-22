@@ -78,15 +78,16 @@ excluding itself on every run.
 
 ## Current state
 
-**T001–T008** of 59 tasks in `specs/001-questionnaire-platform/tasks.md` are done (each with a
-recorded reviewer-subagent verdict); T009 (JSON logging in `backend/config/logger.ts`) is in
-progress. What exists today:
+**T001–T009** of 59 tasks in `specs/001-questionnaire-platform/tasks.md` are done (each with a
+recorded reviewer-subagent verdict). What exists today:
 
 - `backend/` — Strapi 5 TypeScript project (`create-strapi-app@5.54.0`, T002). SQLite by default
   for local dev, PostgreSQL via `DATABASE_CLIENT=postgres` with the `pg` driver installed (T006).
   User content-type extended with a business `role` enum (T007). `GET /health` → 200
   `{"status":"ok"}` / 503 `{"status":"degraded","reason":...}`, registered at the bare `/health`
   path via `strapi.server.routes()` in `src/index.ts` as well as `/api/health` (T008).
+  Structured JSON logs on stdout via `config/logger.ts`, level from `LOG_LEVEL` (default `http`)
+  (T009); Strapi's startup banner is still plain `console.log`, not JSON.
 - `frontend/` — Next.js App Router + TypeScript project (`create-next-app`, T003); `npm run build`
   works. No application pages yet.
 - Tooling — ESLint + Prettier in both projects (`npm run lint`, `npm run format:check`, T004);

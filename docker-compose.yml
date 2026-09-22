@@ -22,11 +22,33 @@
 # deployment); an empty string is falsy, so pg's ConnectionParameters skips
 # parsing it and DATABASE_HOST=db wins (verified against the installed `pg`
 # driver's lib/connection-parameters.js).
+#
+# Ports (Principe IV — Sécurité par défaut, final-fix wave B2): every
+# published port is bound to 127.0.0.1 only, never 0.0.0.0 — this is a local
+# dev stack, not something meant to be reachable from other hosts.
+#
+# Non-root (final-fix wave B1): backend and frontend run as the node:20
+# image's built-in non-root `node` user (uid:gid 1000:1000 — this repo's
+# dev host also uses uid 1000, so bind-mounted files land owned by the host
+# user, not root), parameterised as `${UID:-1000}:${GID:-1000}` in case a
+# contributor's host uid differs. Docker creates a NAMED volume's mountpoint
+# owned by root on first use, and a service already running as uid 1000 has
+# no permission to chown it — so a tiny one-shot `init` service (default
+# image user: root) chowns both node_modules volumes once before backend/
+# frontend mount them; backend/frontend `depends_on: init:
+# condition: service_completed_successfully` so this always runs first. No
+# Dockerfile is added for this — see the header note above.
 
 services:
+  init:
+    image: node:20
+    command: sh -c "chown -R ${UID:-1000}:${GID:-1000} /mnt/backend-node-modules /mnt/frontend-node-modules"
+    volumes:
+      - backend-node-modules:/mnt/backend-node-modules
+      - frontend-node-modules:/mnt/frontend-node-modules
+
   db:
     image: postgres:16
-    restart: unless-stopped
     environment:
       POSTGRES_USER: ${DATABASE_USERNAME}
       POSTGRES_PASSWORD: ${DATABASE_PASSWORD}
@@ -36,7 +58,8 @@ services:
     ports:
       # Published so the quickstart's natively-run backend
       # (`docker compose up -d db` then `npm run develop`) can reach it.
-      - "5432:5432"
+      # 127.0.0.1 only — see file header, Principe IV.
+      - "127.0.0.1:5432:5432"
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${DATABASE_USERNAME} -d ${DATABASE_NAME}"]
       interval: 5s
@@ -45,18 +68,23 @@ services:
 
   backend:
     image: node:20
+    user: "${UID:-1000}:${GID:-1000}"
     working_dir: /app
     command: sh -c "npm ci && npm run develop"
     volumes:
       - ./backend:/app
       - backend-node-modules:/app/node_modules
     ports:
-      - "1337:1337"
+      - "127.0.0.1:1337:1337"
     environment:
       DATABASE_CLIENT: postgres
       # Neutralised on purpose — see the file header note above.
       DATABASE_URL: ""
       DATABASE_HOST: db
+      # db's container-internal port (the service network alias "db" always
+      # listens on Postgres's default 5432) — independent of the host-side
+      # port mapping above, which a contributor could change without
+      # affecting this value.
       DATABASE_PORT: 5432
       DATABASE_NAME: ${DATABASE_NAME}
       DATABASE_USERNAME: ${DATABASE_USERNAME}
@@ -68,10 +96,14 @@ services:
       TRANSFER_TOKEN_SALT: ${TRANSFER_TOKEN_SALT}
       JWT_SECRET: ${JWT_SECRET}
       ENCRYPTION_KEY: ${ENCRYPTION_KEY}
-      LOG_LEVEL: ${LOG_LEVEL}
+      # Falls back to "http" — an unset/empty LOG_LEVEL would otherwise
+      # resolve to "" and make winston log everything (final-fix wave B3).
+      LOG_LEVEL: ${LOG_LEVEL:-http}
     depends_on:
       db:
         condition: service_healthy
+      init:
+        condition: service_completed_successfully
     healthcheck:
       # curl/wget are not guaranteed in the node:20 image; node itself is.
       test:
@@ -88,20 +120,24 @@ services:
 
   frontend:
     image: node:20
+    user: "${UID:-1000}:${GID:-1000}"
     working_dir: /app
     command: sh -c "npm ci && npm run dev -- -H 0.0.0.0"
     volumes:
       - ./frontend:/app
       - frontend-node-modules:/app/node_modules
     ports:
-      - "3000:3000"
+      - "127.0.0.1:3000:3000"
     environment:
       # The value the *browser* must reach, not the Docker-network name —
       # deliberately literal (not from .env.example, whose
       # NEXT_PUBLIC_API_BASE_URL documents the V1/production backend URL).
       NEXT_PUBLIC_API_BASE_URL: http://localhost:1337
     depends_on:
-      - backend
+      backend:
+        condition: service_started
+      init:
+        condition: service_completed_successfully
 
 volumes:
   db-data:

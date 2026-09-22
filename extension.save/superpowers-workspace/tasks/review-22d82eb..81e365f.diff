@@ -1,0 +1,1083 @@
+# Review package: 22d82eb..HEAD
+
+## Commits
+81e365f T010 final-fix: non-root containers, loopback ports, safe LOG_LEVEL default
+759a149 superpowers-bridge 0.4.1: fix scope loss, terminal-state leak, dispatch contents
+
+## Files changed
+ .../SKILL.md                                       | 113 +++++++++++++++------
+ .../speckit.superpowers-bridge.tdd-implement.md    | 113 +++++++++++++++------
+ .../extensions/superpowers-bridge/extension.yml    |   2 +-
+ CLAUDE.md                                          |  61 +++++++----
+ docker-compose.yml                                 |  48 +++++++--
+ .../speckit.superpowers-bridge.tdd-implement.md    | 113 +++++++++++++++------
+ extensions/superpowers-bridge/extension.yml        |   2 +-
+ tests/structure/test_docker_compose.sh             |  61 +++++++++--
+ 8 files changed, 381 insertions(+), 132 deletions(-)
+
+## Diff
+diff --git a/.specify/extensions/superpowers-bridge/.specify-dev/agent-commands/claude/speckit-superpowers-bridge-tdd-implement/SKILL.md b/.specify/extensions/superpowers-bridge/.specify-dev/agent-commands/claude/speckit-superpowers-bridge-tdd-implement/SKILL.md
+index 7af48ad..8ffdcfc 100644
+--- a/.specify/extensions/superpowers-bridge/.specify-dev/agent-commands/claude/speckit-superpowers-bridge-tdd-implement/SKILL.md
++++ b/.specify/extensions/superpowers-bridge/.specify-dev/agent-commands/claude/speckit-superpowers-bridge-tdd-implement/SKILL.md
+@@ -8,106 +8,155 @@ metadata:
+ ---
+ 
+ # Superpowers TDD Implementation Bridge
+ 
+ ## Purpose
+ 
+ Replace /speckit.implement's default single-context task loop with Superpowers'
+ full workflow on the tasks this run will execute: an interactive
+ `brainstorming` session, a `writing-plans` implementation plan, then
+ `subagent-driven-development` on that plan — a fresh implementer subagent per
+-plan task, enforced RED-GREEN-REFACTOR, and a two-stage review after each.
++plan task, enforced RED-GREEN-REFACTOR, and one task review (spec compliance
+++ code quality — `subagent-driven-development`'s single review with two
++verdicts) after each.
+ 
+ ## Behavior
+ 
+-1. From FEATURE_DIR, read `tasks.md`, `plan.md`, `spec.md`, and — if present —
+-   `.specify/memory/constitution.md`. Record their absolute paths.
+-2. **Determine this run's scope** from the arguments below (e.g. "next task"
+-   = the first unchecked task in `tasks.md` in dependency order; a list of IDs
+-   = those tasks; empty = every unchecked task).
++1. FEATURE_DIR is the feature directory the invoking `/speckit-implement`
++   already resolved (its `check-prerequisites.sh --json` output, e.g.
++   `specs/001-questionnaire-platform/`). From FEATURE_DIR, read `tasks.md`,
++   `plan.md`, `spec.md`, and — if present — `.specify/memory/constitution.md`.
++   Record their absolute paths.
++2. **Determine this run's scope**, in this order — never silently default to
++   "every unchecked task":
++   - This command's own arguments below ($ARGUMENTS), if non-empty.
++   - Else, the user input given to the invoking `/speckit-implement`, if
++     non-empty.
++   - Else, ASK the human what to run, offering "next unchecked task" (the
++     first unchecked task in `tasks.md` in dependency order) as the default,
++     and wait for their answer.
++   A list of task IDs scopes the run to those tasks.
+ 
+    $ARGUMENTS
+ 
+-3. **Brainstorm the scope — once per run, before any dispatch.** Invoke the
++3. **Git safety, before brainstorming touches anything.** If the current
++   branch is `main` or `master`, create and switch to
++   `claude/<task-ids>-<slug>` before doing anything else in this hook;
++   otherwise stay on the current feature branch. Once
++   `subagent-driven-development`'s workspace exists (step 6), note there that
++   its worktree setup may reuse this branch in place — this is a standing
++   fact about how this repo runs the hook, not a fresh ruling to re-make
++   every run.
++4. **Brainstorm the scope — once per run, before any dispatch.** Invoke the
+    Superpowers `brainstorming` skill on the in-scope task(s): their exact
+    `tasks.md` text plus the absolute paths of `spec.md`, `plan.md`,
+    `constitution.md` and, if present, `research.md`, `data-model.md`,
+    `contracts/` and `quickstart.md`. Follow the skill's own process (classify
+-   spike/bounded/architectural, clarifying questions one at a time, 2-3
++   bounded/architectural, clarifying questions one at a time, 2-3
+    approaches, design in sections, human approval). Constraints that override
+    brainstorming's defaults:
+    - `spec.md`, `plan.md` and the constitution are already-approved design.
+      Brainstorming decides *how* to implement the in-scope tasks within them;
+      it does not reopen them. If the session surfaces a genuine conflict with
+      them, say so and propose an explicit amendment (e.g. a dated `plan.md`
+      amendment or a Complexity Tracking entry) — never diverge silently.
+-   - Whatever path the skill classifies, persist the approved design to
++   - A `tasks.md` item is never a spike: it is already-scoped implementation
++     work behind an approved spec and plan, never a bare feasibility
++     question. Classify it bounded or architectural — never spike.
++   - Whatever path brainstorming classifies (bounded or architectural), the
++     next step is step 5 below (`writing-plans`). This explicitly overrides
++     the bounded path's normal terminal state ("implementation proceeds
++     directly through the normal development workflow; no plan document").
++     `writing-plans` is never skipped for a `tasks.md` item, on either path.
++     Do not chain into any other skill.
++   - Whatever path is taken, persist the approved design to
+      `docs/superpowers/specs/YYYY-MM-DD-<task-ids>-<topic>-design.md` and
+      commit it (stage it by path). A bounded task gets a short document; it
+      still gets one, because implementer and reviewer subagents can only read
+      files.
+-   - Once the design is approved, brainstorming's normal terminal step —
+-     invoking `writing-plans` — is exactly step 4. Do not chain into any other
+-     skill.
+    - Do NOT create, modify or delete application source files, tests or
+      `tasks.md` during brainstorming.
+-4. **Plan — invoke the Superpowers `writing-plans` skill** on the approved
++5. **Plan — invoke the Superpowers `writing-plans` skill** on the approved
+    design. Constraints that override its defaults:
+    - Save to `docs/superpowers/plans/YYYY-MM-DD-<task-ids>-<topic>.md`; its
+-     `**Spec:**` line names the step-3 design document and `spec.md`; its
++     `**Spec:**` line names the step-4 design document and `spec.md`; its
+      Global Constraints copy verbatim the binding values from `spec.md`,
+      `plan.md`, `contracts/` and the constitution that the in-scope tasks
+      touch.
+    - Scope is exactly the in-scope `tasks.md` items — no more. A `tasks.md`
+      item may be split into several plan tasks, but every `### Task N:`
+      heading must name the `tasks.md` ID it implements (e.g.
+      `### Task 1: T011 — contract test POST /api/questionnaires`), and every
+      in-scope ID must be covered. Respect `tasks.md` dependency order and
+      `[P]` markers.
+    - Execution method is already supplied: **Subagent-driven**. Still show
+      the human the saved plan and ask "Does it capture what you want?";
+      incorporate corrections, commit the plan (stage it by path), then
+-     continue at step 5.
+-5. Invoke the Superpowers `subagent-driven-development` skill with the step-4
++     continue at step 6.
++6. Invoke the Superpowers `subagent-driven-development` skill with the step-5
+    plan file as its PLAN_FILE (so its `task-brief`, `review-package` and
+    per-plan ledger work natively).
+-6. For every task dispatched to a fresh subagent, the subagent's prompt MUST
++7. For every task dispatched to a fresh subagent, the plan text itself must
++   reach the subagent only through SDD's own channel — its task-brief output
++   plus the plan's Global Constraints block copied verbatim — never as a
++   handed-over path to the step-5 plan document. The dispatch prompt MUST
+    explicitly include:
+    - The `tasks.md` ID the plan task implements, and that item's exact
+      description and file paths as written in `tasks.md`.
++   - The absolute path to this task's brief, produced by SDD's
++     `scripts/task-brief` (per SDD step "Dispatch the implementer") —
++     introduced as "read this first — it is your requirements, with the
++     exact values to use verbatim".
++   - The absolute path to the design document approved in step 4.
+    - The absolute paths to `spec.md`, `plan.md`, `tasks.md` and
+-     `constitution.md` collected in step 1, **and to the design document
+-     approved in step 3 and the plan written in step 4**, which are binding
+-     for that task (subagents never
+-     inherit this session's context, so nothing reaches them unless it is
+-     written into their prompt). The task reviewer gets both paths too and
+-     checks compliance against them.
++     `constitution.md` collected in step 1, as reference reading only, with
++     an explicit instruction: "do not read the whole implementation plan
++     (the step-5 `writing-plans` document) — it reaches you only through the
++     task-brief above and the Global Constraints copied into this dispatch."
+    - An instruction to read `constitution.md` before proposing any
+      implementation approach.
+    - An instruction to follow the Superpowers `test-driven-development` skill:
+      write a failing test first, watch it fail, then write the minimal code to
+      pass. No production code without a failing test first.
+    - **If the task creates or modifies a graphical user interface** (a page or
+      component file under `frontend/`, e.g. anything the task labels
+      "Frontend:" or touching `frontend/app/`, `frontend/components/`,
+      `frontend/services/*.tsx`), an additional instruction to invoke the
+      `impeccable` skill for the UI/UX/visual work — run its `shape` command
+      (or let its own routing pick `new-work` for a new surface) before
+      writing UI code, and follow its craft-floor quality bar while
+      implementing. This runs alongside TDD, not instead of it: `impeccable`
+      governs visual/UX craft and accessibility; `test-driven-development`
+      still governs the task's testable behavior (component rendering,
+      interactions, API calls). A subagent working a UI task without invoking
+      `impeccable` has not correctly executed the task.
+-7. After each subagent completes, run the task review (spec compliance + code
+-   quality) that `subagent-driven-development` prescribes. Mark a `tasks.md`
+-   item `[X]` — with an inline annotation recording the reviewer verdict —
+-   only once every plan task that names its ID has passed review.
+-8. After the step-4 plan is approved, execute continuously without
++   The task reviewer's inputs are SDD's own — the brief file, the report
++   file, the review-package diff, and the plan's Global Constraints block —
++   plus the design-doc path from step 4; never the whole plan document
++   either.
++8. After each subagent completes, run the task review (spec compliance + code
++   quality, SDD's single review with two verdicts) that
++   `subagent-driven-development` prescribes. Mark a `tasks.md` item `[X]` —
++   with an inline annotation recording the reviewer verdict — only once every
++   plan task that names its ID has passed review.
++9. After the step-5 plan is approved, execute continuously without
+    pausing between tasks to ask "should I continue?". Only stop for: an
+    irreversible or destructive operation, a security-sensitive action, a side
+    effect outside this worktree (merge, push to a shared branch, publish), or
+    a plan too broken to proceed — and say why.
+-9. Once every in-scope task is complete, run the whole-branch review
+-   `subagent-driven-development` prescribes, then report: the design document
+-   and plan paths, tasks completed, files touched, tests added, and any ruling you made
+-   without stopping to ask.
+\ No newline at end of file
++10. Once every in-scope task is complete, run the whole-branch review
++    `subagent-driven-development` prescribes. Do NOT delete this plan's SDD
++    workspace afterward, even though SDD's own Finish step says to — some
++    `.superpowers/sdd/tasks/*` files are git-tracked historically in this
++    repo, so leave the workspace in place. Still collect the "Rulings I
++    made" list per SDD's Finish section, then invoke
++    `superpowers:finishing-a-development-branch` — its push/PR/merge options
++    remain gated by the human (the "only stop for ... a push to a shared
++    branch, publish" rule in step 9 above already covers it). Then report:
++    the design document and plan paths, tasks completed, files touched,
++    tests added, and any ruling you made without stopping to ask.
++11. **Terminal instruction.** This hook REPLACES `/speckit-implement`'s
++    Outline steps 3-9 in full. When this hook returns, the invoking
++    `/speckit-implement` MUST NOT implement, review, or mark `[X]` any task
++    itself — all of that happened in the steps above. It proceeds directly
++    to its own "Mandatory Post-Execution Hooks" (`after_implement`) section
++    and then its Completion Report.
+diff --git a/.specify/extensions/superpowers-bridge/commands/speckit.superpowers-bridge.tdd-implement.md b/.specify/extensions/superpowers-bridge/commands/speckit.superpowers-bridge.tdd-implement.md
+index 756ddf9..14d7653 100644
+--- a/.specify/extensions/superpowers-bridge/commands/speckit.superpowers-bridge.tdd-implement.md
++++ b/.specify/extensions/superpowers-bridge/commands/speckit.superpowers-bridge.tdd-implement.md
+@@ -3,106 +3,155 @@ description: "Brainstorm the in-scope tasks, plan them with Superpowers writing-
+ ---
+ 
+ # Superpowers TDD Implementation Bridge
+ 
+ ## Purpose
+ 
+ Replace /speckit.implement's default single-context task loop with Superpowers'
+ full workflow on the tasks this run will execute: an interactive
+ `brainstorming` session, a `writing-plans` implementation plan, then
+ `subagent-driven-development` on that plan — a fresh implementer subagent per
+-plan task, enforced RED-GREEN-REFACTOR, and a two-stage review after each.
++plan task, enforced RED-GREEN-REFACTOR, and one task review (spec compliance
+++ code quality — `subagent-driven-development`'s single review with two
++verdicts) after each.
+ 
+ ## Behavior
+ 
+-1. From FEATURE_DIR, read `tasks.md`, `plan.md`, `spec.md`, and — if present —
+-   `/memory/constitution.md`. Record their absolute paths.
+-2. **Determine this run's scope** from the arguments below (e.g. "next task"
+-   = the first unchecked task in `tasks.md` in dependency order; a list of IDs
+-   = those tasks; empty = every unchecked task).
++1. FEATURE_DIR is the feature directory the invoking `/speckit-implement`
++   already resolved (its `check-prerequisites.sh --json` output, e.g.
++   `specs/001-questionnaire-platform/`). From FEATURE_DIR, read `tasks.md`,
++   `plan.md`, `spec.md`, and — if present — `/memory/constitution.md`.
++   Record their absolute paths.
++2. **Determine this run's scope**, in this order — never silently default to
++   "every unchecked task":
++   - This command's own arguments below ($ARGUMENTS), if non-empty.
++   - Else, the user input given to the invoking `/speckit-implement`, if
++     non-empty.
++   - Else, ASK the human what to run, offering "next unchecked task" (the
++     first unchecked task in `tasks.md` in dependency order) as the default,
++     and wait for their answer.
++   A list of task IDs scopes the run to those tasks.
+ 
+    $ARGUMENTS
+ 
+-3. **Brainstorm the scope — once per run, before any dispatch.** Invoke the
++3. **Git safety, before brainstorming touches anything.** If the current
++   branch is `main` or `master`, create and switch to
++   `claude/<task-ids>-<slug>` before doing anything else in this hook;
++   otherwise stay on the current feature branch. Once
++   `subagent-driven-development`'s workspace exists (step 6), note there that
++   its worktree setup may reuse this branch in place — this is a standing
++   fact about how this repo runs the hook, not a fresh ruling to re-make
++   every run.
++4. **Brainstorm the scope — once per run, before any dispatch.** Invoke the
+    Superpowers `brainstorming` skill on the in-scope task(s): their exact
+    `tasks.md` text plus the absolute paths of `spec.md`, `plan.md`,
+    `constitution.md` and, if present, `research.md`, `data-model.md`,
+    `contracts/` and `quickstart.md`. Follow the skill's own process (classify
+-   spike/bounded/architectural, clarifying questions one at a time, 2-3
++   bounded/architectural, clarifying questions one at a time, 2-3
+    approaches, design in sections, human approval). Constraints that override
+    brainstorming's defaults:
+    - `spec.md`, `plan.md` and the constitution are already-approved design.
+      Brainstorming decides *how* to implement the in-scope tasks within them;
+      it does not reopen them. If the session surfaces a genuine conflict with
+      them, say so and propose an explicit amendment (e.g. a dated `plan.md`
+      amendment or a Complexity Tracking entry) — never diverge silently.
+-   - Whatever path the skill classifies, persist the approved design to
++   - A `tasks.md` item is never a spike: it is already-scoped implementation
++     work behind an approved spec and plan, never a bare feasibility
++     question. Classify it bounded or architectural — never spike.
++   - Whatever path brainstorming classifies (bounded or architectural), the
++     next step is step 5 below (`writing-plans`). This explicitly overrides
++     the bounded path's normal terminal state ("implementation proceeds
++     directly through the normal development workflow; no plan document").
++     `writing-plans` is never skipped for a `tasks.md` item, on either path.
++     Do not chain into any other skill.
++   - Whatever path is taken, persist the approved design to
+      `docs/superpowers/specs/YYYY-MM-DD-<task-ids>-<topic>-design.md` and
+      commit it (stage it by path). A bounded task gets a short document; it
+      still gets one, because implementer and reviewer subagents can only read
+      files.
+-   - Once the design is approved, brainstorming's normal terminal step —
+-     invoking `writing-plans` — is exactly step 4. Do not chain into any other
+-     skill.
+    - Do NOT create, modify or delete application source files, tests or
+      `tasks.md` during brainstorming.
+-4. **Plan — invoke the Superpowers `writing-plans` skill** on the approved
++5. **Plan — invoke the Superpowers `writing-plans` skill** on the approved
+    design. Constraints that override its defaults:
+    - Save to `docs/superpowers/plans/YYYY-MM-DD-<task-ids>-<topic>.md`; its
+-     `**Spec:**` line names the step-3 design document and `spec.md`; its
++     `**Spec:**` line names the step-4 design document and `spec.md`; its
+      Global Constraints copy verbatim the binding values from `spec.md`,
+      `plan.md`, `contracts/` and the constitution that the in-scope tasks
+      touch.
+    - Scope is exactly the in-scope `tasks.md` items — no more. A `tasks.md`
+      item may be split into several plan tasks, but every `### Task N:`
+      heading must name the `tasks.md` ID it implements (e.g.
+      `### Task 1: T011 — contract test POST /api/questionnaires`), and every
+      in-scope ID must be covered. Respect `tasks.md` dependency order and
+      `[P]` markers.
+    - Execution method is already supplied: **Subagent-driven**. Still show
+      the human the saved plan and ask "Does it capture what you want?";
+      incorporate corrections, commit the plan (stage it by path), then
+-     continue at step 5.
+-5. Invoke the Superpowers `subagent-driven-development` skill with the step-4
++     continue at step 6.
++6. Invoke the Superpowers `subagent-driven-development` skill with the step-5
+    plan file as its PLAN_FILE (so its `task-brief`, `review-package` and
+    per-plan ledger work natively).
+-6. For every task dispatched to a fresh subagent, the subagent's prompt MUST
++7. For every task dispatched to a fresh subagent, the plan text itself must
++   reach the subagent only through SDD's own channel — its task-brief output
++   plus the plan's Global Constraints block copied verbatim — never as a
++   handed-over path to the step-5 plan document. The dispatch prompt MUST
+    explicitly include:
+    - The `tasks.md` ID the plan task implements, and that item's exact
+      description and file paths as written in `tasks.md`.
++   - The absolute path to this task's brief, produced by SDD's
++     `scripts/task-brief` (per SDD step "Dispatch the implementer") —
++     introduced as "read this first — it is your requirements, with the
++     exact values to use verbatim".
++   - The absolute path to the design document approved in step 4.
+    - The absolute paths to `spec.md`, `plan.md`, `tasks.md` and
+-     `constitution.md` collected in step 1, **and to the design document
+-     approved in step 3 and the plan written in step 4**, which are binding
+-     for that task (subagents never
+-     inherit this session's context, so nothing reaches them unless it is
+-     written into their prompt). The task reviewer gets both paths too and
+-     checks compliance against them.
++     `constitution.md` collected in step 1, as reference reading only, with
++     an explicit instruction: "do not read the whole implementation plan
++     (the step-5 `writing-plans` document) — it reaches you only through the
++     task-brief above and the Global Constraints copied into this dispatch."
+    - An instruction to read `constitution.md` before proposing any
+      implementation approach.
+    - An instruction to follow the Superpowers `test-driven-development` skill:
+      write a failing test first, watch it fail, then write the minimal code to
+      pass. No production code without a failing test first.
+    - **If the task creates or modifies a graphical user interface** (a page or
+      component file under `frontend/`, e.g. anything the task labels
+      "Frontend:" or touching `frontend/app/`, `frontend/components/`,
+      `frontend/services/*.tsx`), an additional instruction to invoke the
+      `impeccable` skill for the UI/UX/visual work — run its `shape` command
+      (or let its own routing pick `new-work` for a new surface) before
+      writing UI code, and follow its craft-floor quality bar while
+      implementing. This runs alongside TDD, not instead of it: `impeccable`
+      governs visual/UX craft and accessibility; `test-driven-development`
+      still governs the task's testable behavior (component rendering,
+      interactions, API calls). A subagent working a UI task without invoking
+      `impeccable` has not correctly executed the task.
+-7. After each subagent completes, run the task review (spec compliance + code
+-   quality) that `subagent-driven-development` prescribes. Mark a `tasks.md`
+-   item `[X]` — with an inline annotation recording the reviewer verdict —
+-   only once every plan task that names its ID has passed review.
+-8. After the step-4 plan is approved, execute continuously without
++   The task reviewer's inputs are SDD's own — the brief file, the report
++   file, the review-package diff, and the plan's Global Constraints block —
++   plus the design-doc path from step 4; never the whole plan document
++   either.
++8. After each subagent completes, run the task review (spec compliance + code
++   quality, SDD's single review with two verdicts) that
++   `subagent-driven-development` prescribes. Mark a `tasks.md` item `[X]` —
++   with an inline annotation recording the reviewer verdict — only once every
++   plan task that names its ID has passed review.
++9. After the step-5 plan is approved, execute continuously without
+    pausing between tasks to ask "should I continue?". Only stop for: an
+    irreversible or destructive operation, a security-sensitive action, a side
+    effect outside this worktree (merge, push to a shared branch, publish), or
+    a plan too broken to proceed — and say why.
+-9. Once every in-scope task is complete, run the whole-branch review
+-   `subagent-driven-development` prescribes, then report: the design document
+-   and plan paths, tasks completed, files touched, tests added, and any ruling you made
+-   without stopping to ask.
++10. Once every in-scope task is complete, run the whole-branch review
++    `subagent-driven-development` prescribes. Do NOT delete this plan's SDD
++    workspace afterward, even though SDD's own Finish step says to — some
++    `.superpowers/sdd/tasks/*` files are git-tracked historically in this
++    repo, so leave the workspace in place. Still collect the "Rulings I
++    made" list per SDD's Finish section, then invoke
++    `superpowers:finishing-a-development-branch` — its push/PR/merge options
++    remain gated by the human (the "only stop for ... a push to a shared
++    branch, publish" rule in step 9 above already covers it). Then report:
++    the design document and plan paths, tasks completed, files touched,
++    tests added, and any ruling you made without stopping to ask.
++11. **Terminal instruction.** This hook REPLACES `/speckit-implement`'s
++    Outline steps 3-9 in full. When this hook returns, the invoking
++    `/speckit-implement` MUST NOT implement, review, or mark `[X]` any task
++    itself — all of that happened in the steps above. It proceeds directly
++    to its own "Mandatory Post-Execution Hooks" (`after_implement`) section
++    and then its Completion Report.
+diff --git a/.specify/extensions/superpowers-bridge/extension.yml b/.specify/extensions/superpowers-bridge/extension.yml
+index f537701..9def9cd 100644
+--- a/.specify/extensions/superpowers-bridge/extension.yml
++++ b/.specify/extensions/superpowers-bridge/extension.yml
+@@ -1,16 +1,16 @@
+ schema_version: "1.0"
+ 
+ extension:
+   id: superpowers-bridge
+   name: "Superpowers Bridge"
+-  version: "0.4.0"
++  version: "0.4.1"
+   description: "Delegates spec refinement to Superpowers brainstorming and implementation to Superpowers brainstorming + writing-plans + TDD + subagent-driven-development"
+   author: "Wissem Hamza"
+   license: MIT
+ 
+ requires:
+   speckit_version: ">=0.2.0"
+ 
+ provides:
+   commands:
+     - name: speckit.superpowers-bridge.brainstorm
+diff --git a/CLAUDE.md b/CLAUDE.md
+index ea88193..624ce9a 100644
+--- a/CLAUDE.md
++++ b/CLAUDE.md
+@@ -47,71 +47,88 @@ for spec-driven development, extended with a custom extension,
+ `extensions/superpowers-bridge/` (installed into `.specify/extensions/`), which delegates two
+ steps to the [Superpowers](https://github.com/obra/superpowers-marketplace) plugin:
+ 
+ - **`before_specify`** (optional hook) → `speckit.superpowers-bridge.brainstorm` → Superpowers
+   `brainstorming` skill. Refines a raw feature idea (questions, 2-3 approaches, sectioned
+   design) before `/speckit-specify` writes `spec.md`. Writes its design doc to
+   `docs/superpowers/specs/YYYY-MM-DD-<topic>-design.md` in addition to a condensed brief.
+ - **`before_implement`** (mandatory hook, `optional: false` — see the HARD RULE above, this is
+   not optional in practice either) → `speckit.superpowers-bridge.tdd-implement`
+   → Superpowers `brainstorming` → `writing-plans` → `subagent-driven-development` +
+-  `test-driven-development` (bridge v0.4.0). Once per `/speckit-implement` run, before any
+-  dispatch: (1) brainstorms the in-scope task(s) interactively with the human (within the
+-  already-approved spec/plan — it proposes amendments rather than reopening them) and commits the
++  `test-driven-development` (bridge v0.4.1). Once per `/speckit-implement` run, before any
++  dispatch: (1) determines this run's scope from the hook's own arguments, else the invoking
++  `/speckit-implement`'s user input, else asks the human (never silently "every unchecked
++  task"); (2) brainstorms the in-scope task(s) interactively with the human (within the
++  already-approved spec/plan — it proposes amendments rather than reopening them; a `tasks.md`
++  item is always classified bounded or architectural, never a spike) and commits the
+   approved design to `docs/superpowers/specs/YYYY-MM-DD-<task-ids>-<topic>-design.md`;
+-  (2) runs `writing-plans` on it, scoped to exactly those `tasks.md` items, each `### Task N:`
+-  heading naming the `tasks.md` ID it implements, saved to
+-  `docs/superpowers/plans/YYYY-MM-DD-<task-ids>-<topic>.md` and shown to the human for approval;
+-  (3) executes that plan with a fresh implementer subagent per plan task (design doc + plan paths
+-  passed to implementer and reviewer), strict RED-GREEN-REFACTOR, and a task-scoped
+-  reviewer subagent before a task is marked `[X]`. For a task marked **`[UI]`** in `tasks.md`
+-  (creates/modifies a page or component under `frontend/`), the dispatched subagent must
+-  *also* invoke the `impeccable` skill (`.agents/skills/impeccable/`) for the visual/UX/
+-  accessibility work, alongside — not instead of — TDD: `impeccable` governs craft quality,
+-  `test-driven-development` still governs testable behavior.
++  (3) runs `writing-plans` on it regardless of path — this is always the next step, even on the
++  bounded path — scoped to exactly those `tasks.md` items, each `### Task N:` heading naming the
++  `tasks.md` ID it implements, saved to `docs/superpowers/plans/YYYY-MM-DD-<task-ids>-<topic>.md`
++  and shown to the human for approval; (4) executes that plan with a fresh implementer subagent
++  per plan task, strict RED-GREEN-REFACTOR, and a task-scoped reviewer subagent before a task is
++  marked `[X]`. **This hook replaces `/speckit-implement`'s own Outline steps 3-9 entirely**: once
++  it returns, the invoking `/speckit-implement` does not implement, review, or mark `[X]` any task
++  itself — it proceeds straight to its Mandatory Post-Execution Hooks and Completion Report. For a
++  task marked **`[UI]`** in `tasks.md` (creates/modifies a page or component under `frontend/`),
++  the dispatched subagent must *also* invoke the `impeccable` skill (`.agents/skills/impeccable/`)
++  for the visual/UX/accessibility work, alongside — not instead of — TDD: `impeccable` governs
++  craft quality, `test-driven-development` still governs testable behavior.
+ 
+ Do not run `/speckit-implement` expecting it to write code in the current context — it hands
+ off to the hook above, which dispatches subagents. Subagents never inherit this session's
+-context: any dispatch must explicitly pass the task's brief plus absolute paths to `spec.md`,
+-`plan.md`, `tasks.md`, and `.specify/memory/constitution.md`.
++context: an implementer's dispatch carries the `tasks.md` ID line, the task-brief path (SDD's
++`scripts/task-brief` output — the single source of exact requirements), the design-doc path, and
++the absolute paths to `spec.md`/`plan.md`/`tasks.md`/`.specify/memory/constitution.md` as
++reference reading only. The `writing-plans` implementation plan document itself is never handed
++to a subagent as a path to read — it reaches the subagent only through the task-brief output and
++the plan's Global Constraints block copied verbatim into the dispatch. The reviewer gets the same
++SDD inputs (brief, report, review-package diff, Global Constraints) plus the design-doc path.
+ 
+ The canonical command order for this feature (already run once; re-run only to amend):
+ `/speckit-constitution` → `/speckit-specify` → `/speckit-plan` → `/speckit-tasks` → `/speckit-implement`.
+ 
+ **Known friction**: Superpowers' `subagent-driven-development` helper scripts
+ (`scripts/task-brief`) expect Superpowers' own plan format (`### Task N` headings), not Spec
+ Kit's `tasks.md` checklist format (`- [ ] T001 ...`). Since bridge v0.4.0 this is resolved by
+ running SDD on the `writing-plans` plan (not on `tasks.md`), so `task-brief`/`review-package`
+-work natively. Runs before v0.4.0 (T001–T010) used hand-written briefs in
+-`.superpowers/sdd/tasks/`. The `subagent-driven-development` workspace (`.superpowers/sdd/`)
+-self-regenerates a `.gitignore` excluding itself on every run.
++work natively. T001, T005, T009 and T010 have hand-written briefs in `.superpowers/sdd/tasks/`
++from runs before v0.4.0 introduced `writing-plans`; T002-T008 predate this ledger entirely —
++their record is the `tasks.md` inline annotation plus git history, not a brief file. The
++`subagent-driven-development` workspace (`.superpowers/sdd/`) self-regenerates a `.gitignore`
++excluding itself on every run.
+ 
+ ## Current state
+ 
+ **T001–T010** of 59 tasks in `specs/001-questionnaire-platform/tasks.md` are done (each with a
+ recorded reviewer-subagent verdict). What exists today:
+ 
+ - `backend/` — Strapi 5 TypeScript project (`create-strapi-app@5.54.0`, T002). SQLite by default
+   for local dev, PostgreSQL via `DATABASE_CLIENT=postgres` with the `pg` driver installed (T006).
+   User content-type extended with a business `role` enum (T007). `GET /health` → 200
+   `{"status":"ok"}` / 503 `{"status":"degraded","reason":...}`, registered at the bare `/health`
+   path via `strapi.server.routes()` in `src/index.ts` as well as `/api/health` (T008).
+   Structured JSON logs on stdout via `config/logger.ts`, level from `LOG_LEVEL` (default `http`)
+   (T009); Strapi's startup banner is still plain `console.log`, not JSON.
+ - `frontend/` — Next.js App Router + TypeScript project (`create-next-app`, T003); `npm run build`
+   works. No application pages yet.
+ - Tooling — ESLint + Prettier in both projects (`npm run lint`, `npm run format:check`, T004);
+   root `.env.example` documents DB/JWT/SMTP/API-URL variables (T005).
+-- `docker-compose.yml` — local dev stack (T010): `db` (postgres:16, port 5432), `backend`
+-  (node:20 + bind mount, `npm run develop`, :1337, healthcheck on `/health`), `frontend` (node:20,
+-  `npm run dev`, :3000). No Dockerfiles yet (T055). `cp .env.example .env && docker compose up -d`.
+-  Caveat: the bind mount leaves root-owned `backend/types/generated/` files on the host.
++- `docker-compose.yml` — local dev stack (T010, non-root/loopback fixes from the final-fix wave):
++  `db` (postgres:16, `127.0.0.1:5432`), `backend` (node:20 + bind mount, `npm run develop`,
++  `127.0.0.1:1337`, healthcheck on `/health`), `frontend` (node:20, `npm run dev`,
++  `127.0.0.1:3000`); every published port is loopback-only. `backend`/`frontend` run as the
++  image's non-root `node` user (uid:gid 1000:1000), via a one-shot `init` helper service that
++  chowns the named node_modules volumes first — verified live to leave no root-owned files under
++  `backend/`/`frontend/` on the host (the empty node_modules mountpoint directories that Docker's
++  daemon creates for the named volumes are the sole, expected exception — no real content lands
++  there). No Dockerfiles yet (T055). `cp .env.example .env && docker compose up -d`.
+ - Tests — so far only shell scripts under `tests/structure/*.sh` (run each one; all should pass).
+   No Jest/contract/integration test harness exists yet (starts with T011+).
+ 
+ **Open risk carried forward from T007** (see its `tasks.md` annotation): the custom `role` enum
+ overwrites Strapi's built-in `users-permissions` `role` relation, which breaks authenticated
+ permission resolution. Resolve it (rename the field, or amend `data-model.md` + `plan.md`
+ Complexity Tracking) before any login/auth/permission-gated task.
+ 
+ ## Source of truth for requirements and design
+ 
+diff --git a/docker-compose.yml b/docker-compose.yml
+index 22a1777..2f41d8d 100644
+--- a/docker-compose.yml
++++ b/docker-compose.yml
+@@ -15,95 +15,131 @@
+ # Secrets (Principe IV): every credential below is `${VAR}` interpolation
+ # from the environment (see .env.example at the repo root — `cp .env.example
+ # .env` before `docker compose up`), never a literal. The one exception is
+ # DATABASE_URL, deliberately set to an empty string on the backend service:
+ # backend/config/database.ts gives DATABASE_URL precedence over
+ # DATABASE_HOST/PORT/... when it parses truthy, but .env.example ships a
+ # non-empty placeholder DATABASE_URL (documenting the var for the V1/managed
+ # deployment); an empty string is falsy, so pg's ConnectionParameters skips
+ # parsing it and DATABASE_HOST=db wins (verified against the installed `pg`
+ # driver's lib/connection-parameters.js).
++#
++# Ports (Principe IV — Sécurité par défaut, final-fix wave B2): every
++# published port is bound to 127.0.0.1 only, never 0.0.0.0 — this is a local
++# dev stack, not something meant to be reachable from other hosts.
++#
++# Non-root (final-fix wave B1): backend and frontend run as the node:20
++# image's built-in non-root `node` user (uid:gid 1000:1000 — this repo's
++# dev host also uses uid 1000, so bind-mounted files land owned by the host
++# user, not root), parameterised as `${UID:-1000}:${GID:-1000}` in case a
++# contributor's host uid differs. Docker creates a NAMED volume's mountpoint
++# owned by root on first use, and a service already running as uid 1000 has
++# no permission to chown it — so a tiny one-shot `init` service (default
++# image user: root) chowns both node_modules volumes once before backend/
++# frontend mount them; backend/frontend `depends_on: init:
++# condition: service_completed_successfully` so this always runs first. No
++# Dockerfile is added for this — see the header note above.
+ 
+ services:
++  init:
++    image: node:20
++    command: sh -c "chown -R ${UID:-1000}:${GID:-1000} /mnt/backend-node-modules /mnt/frontend-node-modules"
++    volumes:
++      - backend-node-modules:/mnt/backend-node-modules
++      - frontend-node-modules:/mnt/frontend-node-modules
++
+   db:
+     image: postgres:16
+-    restart: unless-stopped
+     environment:
+       POSTGRES_USER: ${DATABASE_USERNAME}
+       POSTGRES_PASSWORD: ${DATABASE_PASSWORD}
+       POSTGRES_DB: ${DATABASE_NAME}
+     volumes:
+       - db-data:/var/lib/postgresql/data
+     ports:
+       # Published so the quickstart's natively-run backend
+       # (`docker compose up -d db` then `npm run develop`) can reach it.
+-      - "5432:5432"
++      # 127.0.0.1 only — see file header, Principe IV.
++      - "127.0.0.1:5432:5432"
+     healthcheck:
+       test: ["CMD-SHELL", "pg_isready -U ${DATABASE_USERNAME} -d ${DATABASE_NAME}"]
+       interval: 5s
+       timeout: 5s
+       retries: 10
+ 
+   backend:
+     image: node:20
++    user: "${UID:-1000}:${GID:-1000}"
+     working_dir: /app
+     command: sh -c "npm ci && npm run develop"
+     volumes:
+       - ./backend:/app
+       - backend-node-modules:/app/node_modules
+     ports:
+-      - "1337:1337"
++      - "127.0.0.1:1337:1337"
+     environment:
+       DATABASE_CLIENT: postgres
+       # Neutralised on purpose — see the file header note above.
+       DATABASE_URL: ""
+       DATABASE_HOST: db
++      # db's container-internal port (the service network alias "db" always
++      # listens on Postgres's default 5432) — independent of the host-side
++      # port mapping above, which a contributor could change without
++      # affecting this value.
+       DATABASE_PORT: 5432
+       DATABASE_NAME: ${DATABASE_NAME}
+       DATABASE_USERNAME: ${DATABASE_USERNAME}
+       DATABASE_PASSWORD: ${DATABASE_PASSWORD}
+       DATABASE_SSL: "false"
+       APP_KEYS: ${APP_KEYS}
+       ADMIN_JWT_SECRET: ${ADMIN_JWT_SECRET}
+       API_TOKEN_SALT: ${API_TOKEN_SALT}
+       TRANSFER_TOKEN_SALT: ${TRANSFER_TOKEN_SALT}
+       JWT_SECRET: ${JWT_SECRET}
+       ENCRYPTION_KEY: ${ENCRYPTION_KEY}
+-      LOG_LEVEL: ${LOG_LEVEL}
++      # Falls back to "http" — an unset/empty LOG_LEVEL would otherwise
++      # resolve to "" and make winston log everything (final-fix wave B3).
++      LOG_LEVEL: ${LOG_LEVEL:-http}
+     depends_on:
+       db:
+         condition: service_healthy
++      init:
++        condition: service_completed_successfully
+     healthcheck:
+       # curl/wget are not guaranteed in the node:20 image; node itself is.
+       test:
+         [
+           "CMD",
+           "node",
+           "-e",
+           "require('http').get('http://localhost:1337/health', (res) => { process.exit(res.statusCode === 200 ? 0 : 1); }).on('error', () => process.exit(1));",
+         ]
+       interval: 10s
+       timeout: 5s
+       retries: 30
+       start_period: 60s
+ 
+   frontend:
+     image: node:20
++    user: "${UID:-1000}:${GID:-1000}"
+     working_dir: /app
+     command: sh -c "npm ci && npm run dev -- -H 0.0.0.0"
+     volumes:
+       - ./frontend:/app
+       - frontend-node-modules:/app/node_modules
+     ports:
+-      - "3000:3000"
++      - "127.0.0.1:3000:3000"
+     environment:
+       # The value the *browser* must reach, not the Docker-network name —
+       # deliberately literal (not from .env.example, whose
+       # NEXT_PUBLIC_API_BASE_URL documents the V1/production backend URL).
+       NEXT_PUBLIC_API_BASE_URL: http://localhost:1337
+     depends_on:
+-      - backend
++      backend:
++        condition: service_started
++      init:
++        condition: service_completed_successfully
+ 
+ volumes:
+   db-data:
+   backend-node-modules:
+   frontend-node-modules:
+diff --git a/extensions/superpowers-bridge/commands/speckit.superpowers-bridge.tdd-implement.md b/extensions/superpowers-bridge/commands/speckit.superpowers-bridge.tdd-implement.md
+index 756ddf9..14d7653 100644
+--- a/extensions/superpowers-bridge/commands/speckit.superpowers-bridge.tdd-implement.md
++++ b/extensions/superpowers-bridge/commands/speckit.superpowers-bridge.tdd-implement.md
+@@ -3,106 +3,155 @@ description: "Brainstorm the in-scope tasks, plan them with Superpowers writing-
+ ---
+ 
+ # Superpowers TDD Implementation Bridge
+ 
+ ## Purpose
+ 
+ Replace /speckit.implement's default single-context task loop with Superpowers'
+ full workflow on the tasks this run will execute: an interactive
+ `brainstorming` session, a `writing-plans` implementation plan, then
+ `subagent-driven-development` on that plan — a fresh implementer subagent per
+-plan task, enforced RED-GREEN-REFACTOR, and a two-stage review after each.
++plan task, enforced RED-GREEN-REFACTOR, and one task review (spec compliance
+++ code quality — `subagent-driven-development`'s single review with two
++verdicts) after each.
+ 
+ ## Behavior
+ 
+-1. From FEATURE_DIR, read `tasks.md`, `plan.md`, `spec.md`, and — if present —
+-   `/memory/constitution.md`. Record their absolute paths.
+-2. **Determine this run's scope** from the arguments below (e.g. "next task"
+-   = the first unchecked task in `tasks.md` in dependency order; a list of IDs
+-   = those tasks; empty = every unchecked task).
++1. FEATURE_DIR is the feature directory the invoking `/speckit-implement`
++   already resolved (its `check-prerequisites.sh --json` output, e.g.
++   `specs/001-questionnaire-platform/`). From FEATURE_DIR, read `tasks.md`,
++   `plan.md`, `spec.md`, and — if present — `/memory/constitution.md`.
++   Record their absolute paths.
++2. **Determine this run's scope**, in this order — never silently default to
++   "every unchecked task":
++   - This command's own arguments below ($ARGUMENTS), if non-empty.
++   - Else, the user input given to the invoking `/speckit-implement`, if
++     non-empty.
++   - Else, ASK the human what to run, offering "next unchecked task" (the
++     first unchecked task in `tasks.md` in dependency order) as the default,
++     and wait for their answer.
++   A list of task IDs scopes the run to those tasks.
+ 
+    $ARGUMENTS
+ 
+-3. **Brainstorm the scope — once per run, before any dispatch.** Invoke the
++3. **Git safety, before brainstorming touches anything.** If the current
++   branch is `main` or `master`, create and switch to
++   `claude/<task-ids>-<slug>` before doing anything else in this hook;
++   otherwise stay on the current feature branch. Once
++   `subagent-driven-development`'s workspace exists (step 6), note there that
++   its worktree setup may reuse this branch in place — this is a standing
++   fact about how this repo runs the hook, not a fresh ruling to re-make
++   every run.
++4. **Brainstorm the scope — once per run, before any dispatch.** Invoke the
+    Superpowers `brainstorming` skill on the in-scope task(s): their exact
+    `tasks.md` text plus the absolute paths of `spec.md`, `plan.md`,
+    `constitution.md` and, if present, `research.md`, `data-model.md`,
+    `contracts/` and `quickstart.md`. Follow the skill's own process (classify
+-   spike/bounded/architectural, clarifying questions one at a time, 2-3
++   bounded/architectural, clarifying questions one at a time, 2-3
+    approaches, design in sections, human approval). Constraints that override
+    brainstorming's defaults:
+    - `spec.md`, `plan.md` and the constitution are already-approved design.
+      Brainstorming decides *how* to implement the in-scope tasks within them;
+      it does not reopen them. If the session surfaces a genuine conflict with
+      them, say so and propose an explicit amendment (e.g. a dated `plan.md`
+      amendment or a Complexity Tracking entry) — never diverge silently.
+-   - Whatever path the skill classifies, persist the approved design to
++   - A `tasks.md` item is never a spike: it is already-scoped implementation
++     work behind an approved spec and plan, never a bare feasibility
++     question. Classify it bounded or architectural — never spike.
++   - Whatever path brainstorming classifies (bounded or architectural), the
++     next step is step 5 below (`writing-plans`). This explicitly overrides
++     the bounded path's normal terminal state ("implementation proceeds
++     directly through the normal development workflow; no plan document").
++     `writing-plans` is never skipped for a `tasks.md` item, on either path.
++     Do not chain into any other skill.
++   - Whatever path is taken, persist the approved design to
+      `docs/superpowers/specs/YYYY-MM-DD-<task-ids>-<topic>-design.md` and
+      commit it (stage it by path). A bounded task gets a short document; it
+      still gets one, because implementer and reviewer subagents can only read
+      files.
+-   - Once the design is approved, brainstorming's normal terminal step —
+-     invoking `writing-plans` — is exactly step 4. Do not chain into any other
+-     skill.
+    - Do NOT create, modify or delete application source files, tests or
+      `tasks.md` during brainstorming.
+-4. **Plan — invoke the Superpowers `writing-plans` skill** on the approved
++5. **Plan — invoke the Superpowers `writing-plans` skill** on the approved
+    design. Constraints that override its defaults:
+    - Save to `docs/superpowers/plans/YYYY-MM-DD-<task-ids>-<topic>.md`; its
+-     `**Spec:**` line names the step-3 design document and `spec.md`; its
++     `**Spec:**` line names the step-4 design document and `spec.md`; its
+      Global Constraints copy verbatim the binding values from `spec.md`,
+      `plan.md`, `contracts/` and the constitution that the in-scope tasks
+      touch.
+    - Scope is exactly the in-scope `tasks.md` items — no more. A `tasks.md`
+      item may be split into several plan tasks, but every `### Task N:`
+      heading must name the `tasks.md` ID it implements (e.g.
+      `### Task 1: T011 — contract test POST /api/questionnaires`), and every
+      in-scope ID must be covered. Respect `tasks.md` dependency order and
+      `[P]` markers.
+    - Execution method is already supplied: **Subagent-driven**. Still show
+      the human the saved plan and ask "Does it capture what you want?";
+      incorporate corrections, commit the plan (stage it by path), then
+-     continue at step 5.
+-5. Invoke the Superpowers `subagent-driven-development` skill with the step-4
++     continue at step 6.
++6. Invoke the Superpowers `subagent-driven-development` skill with the step-5
+    plan file as its PLAN_FILE (so its `task-brief`, `review-package` and
+    per-plan ledger work natively).
+-6. For every task dispatched to a fresh subagent, the subagent's prompt MUST
++7. For every task dispatched to a fresh subagent, the plan text itself must
++   reach the subagent only through SDD's own channel — its task-brief output
++   plus the plan's Global Constraints block copied verbatim — never as a
++   handed-over path to the step-5 plan document. The dispatch prompt MUST
+    explicitly include:
+    - The `tasks.md` ID the plan task implements, and that item's exact
+      description and file paths as written in `tasks.md`.
++   - The absolute path to this task's brief, produced by SDD's
++     `scripts/task-brief` (per SDD step "Dispatch the implementer") —
++     introduced as "read this first — it is your requirements, with the
++     exact values to use verbatim".
++   - The absolute path to the design document approved in step 4.
+    - The absolute paths to `spec.md`, `plan.md`, `tasks.md` and
+-     `constitution.md` collected in step 1, **and to the design document
+-     approved in step 3 and the plan written in step 4**, which are binding
+-     for that task (subagents never
+-     inherit this session's context, so nothing reaches them unless it is
+-     written into their prompt). The task reviewer gets both paths too and
+-     checks compliance against them.
++     `constitution.md` collected in step 1, as reference reading only, with
++     an explicit instruction: "do not read the whole implementation plan
++     (the step-5 `writing-plans` document) — it reaches you only through the
++     task-brief above and the Global Constraints copied into this dispatch."
+    - An instruction to read `constitution.md` before proposing any
+      implementation approach.
+    - An instruction to follow the Superpowers `test-driven-development` skill:
+      write a failing test first, watch it fail, then write the minimal code to
+      pass. No production code without a failing test first.
+    - **If the task creates or modifies a graphical user interface** (a page or
+      component file under `frontend/`, e.g. anything the task labels
+      "Frontend:" or touching `frontend/app/`, `frontend/components/`,
+      `frontend/services/*.tsx`), an additional instruction to invoke the
+      `impeccable` skill for the UI/UX/visual work — run its `shape` command
+      (or let its own routing pick `new-work` for a new surface) before
+      writing UI code, and follow its craft-floor quality bar while
+      implementing. This runs alongside TDD, not instead of it: `impeccable`
+      governs visual/UX craft and accessibility; `test-driven-development`
+      still governs the task's testable behavior (component rendering,
+      interactions, API calls). A subagent working a UI task without invoking
+      `impeccable` has not correctly executed the task.
+-7. After each subagent completes, run the task review (spec compliance + code
+-   quality) that `subagent-driven-development` prescribes. Mark a `tasks.md`
+-   item `[X]` — with an inline annotation recording the reviewer verdict —
+-   only once every plan task that names its ID has passed review.
+-8. After the step-4 plan is approved, execute continuously without
++   The task reviewer's inputs are SDD's own — the brief file, the report
++   file, the review-package diff, and the plan's Global Constraints block —
++   plus the design-doc path from step 4; never the whole plan document
++   either.
++8. After each subagent completes, run the task review (spec compliance + code
++   quality, SDD's single review with two verdicts) that
++   `subagent-driven-development` prescribes. Mark a `tasks.md` item `[X]` —
++   with an inline annotation recording the reviewer verdict — only once every
++   plan task that names its ID has passed review.
++9. After the step-5 plan is approved, execute continuously without
+    pausing between tasks to ask "should I continue?". Only stop for: an
+    irreversible or destructive operation, a security-sensitive action, a side
+    effect outside this worktree (merge, push to a shared branch, publish), or
+    a plan too broken to proceed — and say why.
+-9. Once every in-scope task is complete, run the whole-branch review
+-   `subagent-driven-development` prescribes, then report: the design document
+-   and plan paths, tasks completed, files touched, tests added, and any ruling you made
+-   without stopping to ask.
++10. Once every in-scope task is complete, run the whole-branch review
++    `subagent-driven-development` prescribes. Do NOT delete this plan's SDD
++    workspace afterward, even though SDD's own Finish step says to — some
++    `.superpowers/sdd/tasks/*` files are git-tracked historically in this
++    repo, so leave the workspace in place. Still collect the "Rulings I
++    made" list per SDD's Finish section, then invoke
++    `superpowers:finishing-a-development-branch` — its push/PR/merge options
++    remain gated by the human (the "only stop for ... a push to a shared
++    branch, publish" rule in step 9 above already covers it). Then report:
++    the design document and plan paths, tasks completed, files touched,
++    tests added, and any ruling you made without stopping to ask.
++11. **Terminal instruction.** This hook REPLACES `/speckit-implement`'s
++    Outline steps 3-9 in full. When this hook returns, the invoking
++    `/speckit-implement` MUST NOT implement, review, or mark `[X]` any task
++    itself — all of that happened in the steps above. It proceeds directly
++    to its own "Mandatory Post-Execution Hooks" (`after_implement`) section
++    and then its Completion Report.
+diff --git a/extensions/superpowers-bridge/extension.yml b/extensions/superpowers-bridge/extension.yml
+index f537701..9def9cd 100644
+--- a/extensions/superpowers-bridge/extension.yml
++++ b/extensions/superpowers-bridge/extension.yml
+@@ -1,16 +1,16 @@
+ schema_version: "1.0"
+ 
+ extension:
+   id: superpowers-bridge
+   name: "Superpowers Bridge"
+-  version: "0.4.0"
++  version: "0.4.1"
+   description: "Delegates spec refinement to Superpowers brainstorming and implementation to Superpowers brainstorming + writing-plans + TDD + subagent-driven-development"
+   author: "Wissem Hamza"
+   license: MIT
+ 
+ requires:
+   speckit_version: ">=0.2.0"
+ 
+ provides:
+   commands:
+     - name: speckit.superpowers-bridge.brainstorm
+diff --git a/tests/structure/test_docker_compose.sh b/tests/structure/test_docker_compose.sh
+index 7d3c15a..d164240 100755
+--- a/tests/structure/test_docker_compose.sh
++++ b/tests/structure/test_docker_compose.sh
+@@ -6,20 +6,26 @@
+ # reste utilisé pour le développement local"; quickstart.md "Démarrage
+ # local"/"Nettoyage": `docker compose up -d db` / `docker compose down -v`
+ # must keep working)
+ #
+ # Behavioural, not grep-only: builds a throwaway .env from the real
+ # .env.example, asks Docker Compose itself to resolve docker-compose.yml
+ # (`docker compose config --format json`), and asserts on the *parsed
+ # model* Compose actually produces (services, images, healthchecks,
+ # depends_on conditions, ports, env var wiring) via python3. Also checks
+ # the raw YAML for secret literals (Principe IV).
++#
++# Extended in the final-fix wave (see .superpowers/sdd/tasks/final-fix-findings.md
++# section B): backend/frontend run as the non-root node user (B1, via a
++# one-shot `init` helper service that chowns the node_modules volumes first),
++# all published ports are bound to 127.0.0.1 only (B2), and LOG_LEVEL falls
++# back to "http" when unset (B3).
+ 
+ set -e
+ 
+ test_count=0
+ pass_count=0
+ fail_count=0
+ 
+ pass() {
+     test_count=$((test_count + 1))
+     pass_count=$((pass_count + 1))
+@@ -100,55 +106,63 @@ with open('$TMP_JSON') as f:
+     data = json.load(f)
+ sys.exit(0 if ($1) else 1)
+ " 2>/dev/null; then
+         pass "$2"
+     else
+         fail "$2" "Expression: $1"
+     fi
+ }
+ 
+ echo ""
+-echo "--- Services present (db, backend, frontend — no extras, YAGNI) ---"
+-check_model "set(data['services'].keys()) == {'db', 'backend', 'frontend'}" \
+-    "exactly the services db, backend, frontend are declared"
++echo "--- Services present (db, backend, frontend + a one-shot non-root init helper — no other extras, YAGNI) ---"
++check_model "set(data['services'].keys()) == {'db', 'backend', 'frontend', 'init'}" \
++    "exactly the services db, backend, frontend, init are declared"
+ 
+ echo ""
+ echo "--- db service (PostgreSQL) ---"
+ check_model "data['services']['db']['image'].startswith('postgres:')" \
+     "db uses the official postgres image, pinned to a major version"
+ check_model "data['services']['db'].get('healthcheck', {}).get('test') and 'pg_isready' in ' '.join(data['services']['db']['healthcheck']['test'])" \
+     "db has a pg_isready healthcheck"
+ check_model "any(v.get('type') == 'volume' for v in data['services']['db'].get('volumes', []))" \
+     "db persists data on a named volume (not a bind mount)"
+ check_model "any(str(p.get('published')) == '5432' for p in data['services']['db'].get('ports', []))" \
+     "db publishes 5432 to the host (native backend / quickstart connects to it)"
++check_model "all(p.get('host_ip') == '127.0.0.1' for p in data['services']['db'].get('ports', []))" \
++    "db's published port is bound to 127.0.0.1 only (Principe IV — Sécurité par défaut)"
+ 
+ echo ""
+ echo "--- backend service (Strapi, Node 20, bind-mounted source) ---"
+ check_model "data['services']['backend']['image'] == 'node:20'" \
+     "backend runs the official node:20 image (no custom Dockerfile in T010)"
+ check_model "any(v.get('type') == 'bind' and v.get('target') == '/app' for v in data['services']['backend'].get('volumes', []))" \
+     "backend bind-mounts its source directory into the container"
+ check_model "any(v.get('type') == 'volume' and v.get('target') == '/app/node_modules' for v in data['services']['backend'].get('volumes', []))" \
+     "backend keeps container node_modules off the host tree (named/anonymous volume over /app/node_modules)"
+ check_model "'develop' in ' '.join(data['services']['backend'].get('command') or [])" \
+     "backend command starts the Strapi dev server (npm run develop)"
+ check_model "data['services']['backend']['environment'].get('DATABASE_CLIENT') == 'postgres'" \
+     "backend sets DATABASE_CLIENT=postgres"
+ check_model "data['services']['backend']['environment'].get('DATABASE_HOST') == 'db'" \
+     "backend sets DATABASE_HOST=db"
+ check_model "data['services']['backend']['environment'].get('DATABASE_URL', '__missing__') == ''" \
+     "backend neutralises DATABASE_URL (empty) so DATABASE_HOST=db is not overridden by database.ts's connectionString precedence"
+ check_model "data['services']['backend'].get('depends_on', {}).get('db', {}).get('condition') == 'service_healthy'" \
+     "backend depends_on db with condition service_healthy"
++check_model "data['services']['backend'].get('depends_on', {}).get('init', {}).get('condition') == 'service_completed_successfully'" \
++    "backend depends_on init with condition service_completed_successfully (node_modules volume must be chowned before backend starts non-root)"
++check_model "data['services']['backend'].get('user') == '1000:1000'" \
++    "backend runs as the non-root node user (uid:gid 1000:1000, parameterised as \${UID:-1000}:\${GID:-1000}) so bind-mounted host files aren't left root-owned"
+ check_model "any(str(p.get('published')) == '1337' for p in data['services']['backend'].get('ports', []))" \
+     "backend publishes 1337"
++check_model "all(p.get('host_ip') == '127.0.0.1' for p in data['services']['backend'].get('ports', []))" \
++    "backend's published port is bound to 127.0.0.1 only (Principe IV — Sécurité par défaut)"
+ hc="$(python3 -c "
+ import json
+ with open('$TMP_JSON') as f:
+     data = json.load(f)
+ t = data['services']['backend'].get('healthcheck', {}).get('test', [])
+ print(' '.join(t))
+ ")"
+ if echo "$hc" | grep -q "1337" && echo "$hc" | grep -q "/health"; then
+     pass "backend healthcheck probes GET /health on port 1337"
+ else
+@@ -160,29 +174,41 @@ echo "--- frontend service (Next.js, Node 20, bind-mounted source) ---"
+ check_model "data['services']['frontend']['image'] == 'node:20'" \
+     "frontend runs the official node:20 image (no custom Dockerfile in T010)"
+ check_model "any(v.get('type') == 'bind' and v.get('target') == '/app' for v in data['services']['frontend'].get('volumes', []))" \
+     "frontend bind-mounts its source directory into the container"
+ check_model "any(v.get('type') == 'volume' and v.get('target') == '/app/node_modules' for v in data['services']['frontend'].get('volumes', []))" \
+     "frontend keeps container node_modules off the host tree"
+ check_model "'dev' in ' '.join(data['services']['frontend'].get('command') or [])" \
+     "frontend command starts the Next.js dev server (npm run dev)"
+ check_model "'backend' in data['services']['frontend'].get('depends_on', {})" \
+     "frontend depends_on backend"
++check_model "data['services']['frontend'].get('depends_on', {}).get('init', {}).get('condition') == 'service_completed_successfully'" \
++    "frontend depends_on init with condition service_completed_successfully (node_modules volume must be chowned before frontend starts non-root)"
++check_model "data['services']['frontend'].get('user') == '1000:1000'" \
++    "frontend runs as the non-root node user (uid:gid 1000:1000, parameterised as \${UID:-1000}:\${GID:-1000}) so bind-mounted host files aren't left root-owned"
+ check_model "any(str(p.get('published')) == '3000' for p in data['services']['frontend'].get('ports', []))" \
+     "frontend publishes 3000"
++check_model "all(p.get('host_ip') == '127.0.0.1' for p in data['services']['frontend'].get('ports', []))" \
++    "frontend's published port is bound to 127.0.0.1 only (Principe IV — Sécurité par défaut)"
+ check_model "'localhost:1337' in data['services']['frontend']['environment'].get('NEXT_PUBLIC_API_BASE_URL', '')" \
+     "frontend NEXT_PUBLIC_API_BASE_URL points at the backend as the browser sees it (http://localhost:1337)"
+ 
+ echo ""
+-echo "--- YAGNI: no extra services, profiles, or prod overrides ---"
+-check_model "'profiles' not in data" "no top-level 'profiles' key"
+-check_model "len(data['services']) == 3" "no services beyond db, backend, frontend"
++echo "--- init service (one-shot root step: chowns the named node_modules volumes to uid:gid 1000:1000 before backend/frontend mount them as non-root — B1) ---"
++check_model "any(v.get('type') == 'volume' and v.get('target').endswith('backend-node-modules') for v in data['services']['init'].get('volumes', []))" \
++    "init mounts the backend-node-modules volume"
++check_model "any(v.get('type') == 'volume' and v.get('target').endswith('frontend-node-modules') for v in data['services']['init'].get('volumes', []))" \
++    "init mounts the frontend-node-modules volume"
++check_model "'chown' in ' '.join(data['services']['init'].get('command') or [])" \
++    "init's command chowns the mounted volumes"
++check_model "not data['services']['init'].get('ports')" \
++    "init publishes no ports (internal one-shot helper only)"
+ 
+ echo ""
+ echo "--- Principe IV: no secret literal in the raw YAML (only \${...} references or explicit empty) ---"
+ TMP_PY=$(mktemp --suffix=.py)
+ cat >"$TMP_PY" <<'PYEOF'
+ import re
+ import sys
+ 
+ compose_file = sys.argv[1]
+ 
+@@ -226,20 +252,43 @@ for var in $COMPOSE_VARS; do
+     if ! grep -q "^${var}=" .env.example; then
+         missing="$missing $var"
+     fi
+ done
+ if [ -z "$missing" ]; then
+     pass ".env.example documents every \${VAR} referenced by $COMPOSE_FILE"
+ else
+     fail ".env.example documents every \${VAR} referenced by $COMPOSE_FILE" "Missing:$missing"
+ fi
+ 
++echo ""
++echo "--- backend LOG_LEVEL defaults to 'http' when unset (B3: \${LOG_LEVEL} alone resolves to '' with an older .env, which logs everything) ---"
++TMP_ENV_NOLOG=$(mktemp)
++TMP_JSON_NOLOG=$(mktemp)
++TMP_ERR_NOLOG=$(mktemp)
++grep -v '^LOG_LEVEL=' .env.example >"$TMP_ENV_NOLOG"
++if docker compose -f "$COMPOSE_FILE" --env-file "$TMP_ENV_NOLOG" config --format json >"$TMP_JSON_NOLOG" 2>"$TMP_ERR_NOLOG"; then
++    if python3 -c "
++import json
++with open('$TMP_JSON_NOLOG') as f:
++    data = json.load(f)
++import sys
++sys.exit(0 if data['services']['backend']['environment'].get('LOG_LEVEL') == 'http' else 1)
++" 2>/dev/null; then
++        pass "backend LOG_LEVEL falls back to 'http' when LOG_LEVEL is unset in the env file"
++    else
++        fail "backend LOG_LEVEL falls back to 'http' when LOG_LEVEL is unset in the env file" "resolved environment.LOG_LEVEL was not 'http'"
++    fi
++else
++    fail "backend LOG_LEVEL falls back to 'http' when LOG_LEVEL is unset in the env file" "$(cat "$TMP_ERR_NOLOG")"
++fi
++rm -f "$TMP_ENV_NOLOG" "$TMP_JSON_NOLOG" "$TMP_ERR_NOLOG"
++
+ echo ""
+ echo "=== Test Results ==="
+ echo "Total: $test_count | Passed: $pass_count | Failed: $fail_count"
+ 
+ if [ $fail_count -eq 0 ]; then
+     echo ""
+     echo "✓ All tests passed!"
+     exit 0
+ else
+     echo ""

@@ -1,19 +1,23 @@
 <!--
 Sync Impact Report
-- Version change: 1.0.0 → 1.1.0
-- Modified principles: none (III. Infrastructure as Code et Reproductibilité unchanged in
-  substance — clarified in Contraintes Techniques et Pédagogiques that it applies equally to
-  managed platforms, not reworded as a principle)
-- Added sections: none
+- Version change: 1.1.0 → 1.2.0 (MINOR: material change to a workflow rule; no principle
+  removed or redefined)
+- Modified principles: I. Test-First — wording only: removed the sentence naming the tool that
+  enforced it (Superpowers `test-driven-development` + `subagent-driven-development` via
+  `/speckit-implement`). The obligation itself (RED observed before GREEN, no `[X]` without
+  RED-GREEN-REFACTOR evidence) is unchanged.
 - Modified sections:
-  - Contraintes Techniques et Pédagogiques: added a phased deployment strategy — V1 on managed
-    platforms (Vercel + Strapi Cloud) for fast real-world availability, self-hosted
-    containerization (Docker/CI/Kubernetes) introduced progressively per the existing S5-S11
-    calendar as a migration from V1, not a rewrite of the pedagogical goal.
-- Removed sections: none
-- Deferred TODOs: none
-- Templates requiring follow-up: none — plan-template.md, spec-template.md, tasks-template.md
-  reference the constitution generically and need no edits for this amendment.
+  - Workflow de Développement et Déploiement: removed the requirement that the
+    `superpowers-bridge` Spec Kit hooks be active, and the reference to
+    `subagent-driven-development` as the review process. The per-task review (spec compliance +
+    code quality) before marking a task complete is kept, tool-neutral.
+- Reason: the project owner stopped using the `superpowers-bridge` extension on 2026-09-23; it
+  is archived in `extension.save/`.
+- Added / removed sections: none
+- Templates requiring follow-up: none. `plan.md` of feature 001 amended the same day
+  (amendment d) to drop its references to the hook.
+- Previous report (1.0.0 → 1.1.0): phased deployment strategy (V1 on Vercel + Strapi Cloud,
+  self-hosted containerization later) added to Contraintes Techniques et Pédagogiques.
 -->
 # Questionnaire App (DevOps 2) Constitution
 
@@ -22,9 +26,7 @@ Sync Impact Report
 ### I. Test-First (NON-NEGOTIABLE)
 Le TDD est obligatoire pour toute tâche d'implémentation : un test qui échoue est écrit et
 observé en échec (RED) avant tout code de production (GREEN), suivi d'un refactor si
-nécessaire. Ce cycle est appliqué et vérifié par le workflow Superpowers
-(`test-driven-development` + `subagent-driven-development`) lors de `/speckit-implement`.
-Aucune tâche ne peut être marquée `[X]` dans `tasks.md` sans preuve du cycle
+nécessaire. Aucune tâche ne peut être marquée `[X]` dans `tasks.md` sans preuve du cycle
 RED-GREEN-REFACTOR.
 
 ### II. Simplicité et YAGNI
@@ -82,11 +84,9 @@ son état sans accès direct au processus.
 
 - Toute nouvelle fonctionnalité suit le cycle Spec Kit standard :
   `/speckit-constitution` → `/speckit-specify` → `/speckit-plan` → `/speckit-tasks` →
-  `/speckit-implement`, avec les hooks de l'extension `superpowers-bridge` actifs
-  (`before_specify` optionnel vers le brainstorming, `before_implement` obligatoire vers le
-  TDD + subagent-driven-development).
+  `/speckit-implement`.
 - Chaque tâche d'implémentation est revue (conformité à la spec + qualité du code) avant d'être
-  marquée complète, conformément au processus prescrit par `subagent-driven-development`.
+  marquée complète.
 - Les pipelines CI/CD doivent rester verts avant toute fusion sur la branche principale ; un
   pipeline rouge bloque le merge, il ne se contourne pas.
 
@@ -104,4 +104,4 @@ Les amendements à cette constitution suivent le versionnage sémantique :
 Chaque amendement doit produire un Sync Impact Report (commentaire HTML en tête de fichier) et
 mettre à jour la date de dernier amendement ci-dessous.
 
-**Version**: 1.1.0 | **Ratified**: 2026-09-19 | **Last Amended**: 2026-09-19
+**Version**: 1.2.0 | **Ratified**: 2026-09-19 | **Last Amended**: 2026-09-23

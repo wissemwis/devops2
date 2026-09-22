@@ -53,13 +53,16 @@ steps to the [Superpowers](https://github.com/obra/superpowers-marketplace) plug
   `docs/superpowers/specs/YYYY-MM-DD-<topic>-design.md` in addition to a condensed brief.
 - **`before_implement`** (mandatory hook, `optional: false` — see the HARD RULE above, this is
   not optional in practice either) → `speckit.superpowers-bridge.tdd-implement`
-  → Superpowers `brainstorming`, then `subagent-driven-development` + `test-driven-development`
-  (bridge v0.3.0). Once per `/speckit-implement` run, before any dispatch, it brainstorms the
-  in-scope task(s) interactively with the human (within the already-approved spec/plan — it
-  proposes amendments rather than reopening them), commits the approved design to
-  `docs/superpowers/specs/YYYY-MM-DD-<task-ids>-<topic>-design.md`, and skips `writing-plans`
-  (`tasks.md` is the plan). Then it executes the in-scope tasks
-  with a fresh implementer subagent per task (design doc path passed to implementer and reviewer), strict RED-GREEN-REFACTOR, and a task-scoped
+  → Superpowers `brainstorming` → `writing-plans` → `subagent-driven-development` +
+  `test-driven-development` (bridge v0.4.0). Once per `/speckit-implement` run, before any
+  dispatch: (1) brainstorms the in-scope task(s) interactively with the human (within the
+  already-approved spec/plan — it proposes amendments rather than reopening them) and commits the
+  approved design to `docs/superpowers/specs/YYYY-MM-DD-<task-ids>-<topic>-design.md`;
+  (2) runs `writing-plans` on it, scoped to exactly those `tasks.md` items, each `### Task N:`
+  heading naming the `tasks.md` ID it implements, saved to
+  `docs/superpowers/plans/YYYY-MM-DD-<task-ids>-<topic>.md` and shown to the human for approval;
+  (3) executes that plan with a fresh implementer subagent per plan task (design doc + plan paths
+  passed to implementer and reviewer), strict RED-GREEN-REFACTOR, and a task-scoped
   reviewer subagent before a task is marked `[X]`. For a task marked **`[UI]`** in `tasks.md`
   (creates/modifies a page or component under `frontend/`), the dispatched subagent must
   *also* invoke the `impeccable` skill (`.agents/skills/impeccable/`) for the visual/UX/
@@ -75,11 +78,12 @@ The canonical command order for this feature (already run once; re-run only to a
 `/speckit-constitution` → `/speckit-specify` → `/speckit-plan` → `/speckit-tasks` → `/speckit-implement`.
 
 **Known friction**: Superpowers' `subagent-driven-development` helper scripts
-(`scripts/task-brief`) expect Superpowers' own plan format (`## Task N` headings), not Spec
-Kit's `tasks.md` checklist format (`- [ ] T001 ...`). Write task briefs by hand when dispatching
-implementer subagents; `scripts/review-package` (diff-based) works unmodified. The
-`subagent-driven-development` workspace (`.superpowers/sdd/`) self-regenerates a `.gitignore`
-excluding itself on every run.
+(`scripts/task-brief`) expect Superpowers' own plan format (`### Task N` headings), not Spec
+Kit's `tasks.md` checklist format (`- [ ] T001 ...`). Since bridge v0.4.0 this is resolved by
+running SDD on the `writing-plans` plan (not on `tasks.md`), so `task-brief`/`review-package`
+work natively. Runs before v0.4.0 (T001–T010) used hand-written briefs in
+`.superpowers/sdd/tasks/`. The `subagent-driven-development` workspace (`.superpowers/sdd/`)
+self-regenerates a `.gitignore` excluding itself on every run.
 
 ## Current state
 

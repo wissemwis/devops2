@@ -1,5 +1,5 @@
 ---
-description: "Brainstorm the in-scope tasks via Superpowers brainstorming, then execute them via Superpowers subagent-driven-development and test-driven-development instead of Spec Kit's built-in sequential executor"
+description: "Brainstorm the in-scope tasks, plan them with Superpowers writing-plans, then execute the plan via Superpowers subagent-driven-development and test-driven-development instead of Spec Kit's built-in sequential executor"
 ---
 
 # Superpowers TDD Implementation Bridge
@@ -7,9 +7,10 @@ description: "Brainstorm the in-scope tasks via Superpowers brainstorming, then 
 ## Purpose
 
 Replace /speckit.implement's default single-context task loop with Superpowers'
-workflow: an interactive `brainstorming` session on the tasks this run will
-execute, then a fresh implementer subagent per task, enforced
-RED-GREEN-REFACTOR, and a two-stage review after each task.
+full workflow on the tasks this run will execute: an interactive
+`brainstorming` session, a `writing-plans` implementation plan, then
+`subagent-driven-development` on that plan — a fresh implementer subagent per
+plan task, enforced RED-GREEN-REFACTOR, and a two-stage review after each.
 
 ## Behavior
 
@@ -39,22 +40,42 @@ RED-GREEN-REFACTOR, and a two-stage review after each task.
      commit it (stage it by path). A bounded task gets a short document; it
      still gets one, because implementer and reviewer subagents can only read
      files.
-   - Do NOT invoke `writing-plans` afterwards: `tasks.md` is the plan. The
-     approved design is the hand-off; continue at step 4.
+   - Once the design is approved, brainstorming's normal terminal step —
+     invoking `writing-plans` — is exactly step 4. Do not chain into any other
+     skill.
    - Do NOT create, modify or delete application source files, tests or
      `tasks.md` during brainstorming.
-4. Invoke the Superpowers `subagent-driven-development` skill to execute the
-   in-scope tasks of `tasks.md`, respecting its phases, dependencies and `[P]`
-   parallel markers.
-5. For every task dispatched to a fresh subagent, the subagent's prompt MUST
+4. **Plan — invoke the Superpowers `writing-plans` skill** on the approved
+   design. Constraints that override its defaults:
+   - Save to `docs/superpowers/plans/YYYY-MM-DD-<task-ids>-<topic>.md`; its
+     `**Spec:**` line names the step-3 design document and `spec.md`; its
+     Global Constraints copy verbatim the binding values from `spec.md`,
+     `plan.md`, `contracts/` and the constitution that the in-scope tasks
+     touch.
+   - Scope is exactly the in-scope `tasks.md` items — no more. A `tasks.md`
+     item may be split into several plan tasks, but every `### Task N:`
+     heading must name the `tasks.md` ID it implements (e.g.
+     `### Task 1: T011 — contract test POST /api/questionnaires`), and every
+     in-scope ID must be covered. Respect `tasks.md` dependency order and
+     `[P]` markers.
+   - Execution method is already supplied: **Subagent-driven**. Still show
+     the human the saved plan and ask "Does it capture what you want?";
+     incorporate corrections, commit the plan (stage it by path), then
+     continue at step 5.
+5. Invoke the Superpowers `subagent-driven-development` skill with the step-4
+   plan file as its PLAN_FILE (so its `task-brief`, `review-package` and
+   per-plan ledger work natively).
+6. For every task dispatched to a fresh subagent, the subagent's prompt MUST
    explicitly include:
-   - The task's exact ID, description and file paths as written in `tasks.md`.
+   - The `tasks.md` ID the plan task implements, and that item's exact
+     description and file paths as written in `tasks.md`.
    - The absolute paths to `spec.md`, `plan.md`, `tasks.md` and
      `constitution.md` collected in step 1, **and to the design document
-     approved in step 3**, which is binding for that task (subagents never
+     approved in step 3 and the plan written in step 4**, which are binding
+     for that task (subagents never
      inherit this session's context, so nothing reaches them unless it is
-     written into their prompt). The task reviewer gets the design document
-     path too and checks compliance against it.
+     written into their prompt). The task reviewer gets both paths too and
+     checks compliance against them.
    - An instruction to read `constitution.md` before proposing any
      implementation approach.
    - An instruction to follow the Superpowers `test-driven-development` skill:
@@ -72,15 +93,16 @@ RED-GREEN-REFACTOR, and a two-stage review after each task.
      still governs the task's testable behavior (component rendering,
      interactions, API calls). A subagent working a UI task without invoking
      `impeccable` has not correctly executed the task.
-6. After each subagent completes, run the task review (spec compliance + code
-   quality) that `subagent-driven-development` prescribes before marking the
-   task `[X]` in `tasks.md`.
-7. After the step-3 brainstorming is approved, execute continuously without
+7. After each subagent completes, run the task review (spec compliance + code
+   quality) that `subagent-driven-development` prescribes. Mark a `tasks.md`
+   item `[X]` — with an inline annotation recording the reviewer verdict —
+   only once every plan task that names its ID has passed review.
+8. After the step-4 plan is approved, execute continuously without
    pausing between tasks to ask "should I continue?". Only stop for: an
    irreversible or destructive operation, a security-sensitive action, a side
    effect outside this worktree (merge, push to a shared branch, publish), or
    a plan too broken to proceed — and say why.
-8. Once every in-scope task is complete, run the whole-branch review
+9. Once every in-scope task is complete, run the whole-branch review
    `subagent-driven-development` prescribes, then report: the design document
-   path, tasks completed, files touched, tests added, and any ruling you made
+   and plan paths, tasks completed, files touched, tests added, and any ruling you made
    without stopping to ask.

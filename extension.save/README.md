@@ -74,12 +74,15 @@ its decisions are in `superpowers-workspace/pending-brainstorm-T011.md`.
 | `installed/specify-extension-superpowers-bridge/` | `.specify/extensions/superpowers-bridge/` | Installed copy, including `.specify-dev/agent-commands/claude/*/SKILL.md` (the generated Claude Code skills). |
 | `installed/claude-skills-symlinks.txt` | `.claude/skills/speckit-superpowers-bridge-*/SKILL.md` | Those two skills were symlinks to the generated SKILL.md files above; the symlinks were deleted, their targets are recorded here. |
 | `installed/extensions.yml.snapshot` | `.specify/extensions.yml` | Hook registration as it was before deactivation. |
+| `installed/extensions-registry.snapshot` | `.specify/extensions/.registry` | Spec Kit's extension registry entry (enabled, v0.2.0 as last registered by the `specify` CLI). |
 | `claude-md-workflow-sections.md` | `CLAUDE.md` | The "HARD RULE" and "Spec Kit workflow" sections that made the bridge binding, verbatim. |
 | `superpowers-workspace/` | `.superpowers/sdd/` | Local SDD workspace (git-ignored; its T001/T005 files were tracked until `2446228`): run ledger `tasks/progress.md` with every ruling, task briefs/reports (T001, T005, T009, T010), review packages (`review-*.diff`), the T010 final-review findings and fix report, and the paused T011 brainstorming notes. |
 
 ## What was changed outside this folder when it was archived
 
 - `.specify/extensions.yml` — no extension installed, no hooks (`installed: []`, `hooks: {}`).
+- `.specify/extensions/.registry` — emptied (`"extensions": {}`); the download cache
+  `.specify/extensions/.cache/` (public extension catalog) is left as Spec Kit wrote it.
 - `CLAUDE.md` — HARD RULE and bridge workflow sections removed (copied here); points to this folder.
 - `.specify/memory/constitution.md` — v1.1.0 → **v1.2.0**: Principe I and the "Workflow de
   Développement" section no longer name the Superpowers workflow / bridge hooks. The Test-First
@@ -96,7 +99,8 @@ its decisions are in `superpowers-workspace/pending-brainstorm-T011.md`.
 
 1. `git mv extension.save/superpowers-bridge extensions/superpowers-bridge` and
    `git mv extension.save/installed/specify-extension-superpowers-bridge .specify/extensions/superpowers-bridge`.
-2. Restore `.specify/extensions.yml` from `installed/extensions.yml.snapshot`.
+2. Restore `.specify/extensions.yml` from `installed/extensions.yml.snapshot` and
+   `.specify/extensions/.registry` from `installed/extensions-registry.snapshot`.
 3. Recreate the two symlinks listed in `installed/claude-skills-symlinks.txt` under `.claude/skills/`.
 4. Install the Superpowers plugin (`/plugin marketplace add obra/superpowers-marketplace`,
    `/plugin install superpowers@superpowers-marketplace`) and connect the Atlassian connector

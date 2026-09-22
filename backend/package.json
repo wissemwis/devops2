@@ -19,6 +19,7 @@
   },
   "dependencies": {
     "@strapi/database": "5.54.0",
+    "@strapi/logger": "5.54.0",
     "@strapi/plugin-cloud": "5.54.0",
     "@strapi/plugin-users-permissions": "5.54.0",
     "@strapi/strapi": "5.54.0",

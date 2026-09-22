@@ -74,17 +74,31 @@ The canonical command order for this feature (already run once; re-run only to a
 Kit's `tasks.md` checklist format (`- [ ] T001 ...`). Write task briefs by hand when dispatching
 implementer subagents; `scripts/review-package` (diff-based) works unmodified. The
 `subagent-driven-development` workspace (`.superpowers/sdd/`) self-regenerates a `.gitignore`
-excluding itself on every run — this project tracks its content anyway (ledger, briefs,
-reports) via `git add -f`, so future dispatches need the same `-f`.
+excluding itself on every run.
 
 ## Current state
 
-**T001** and **T002** of 59 tasks in `specs/001-questionnaire-platform/tasks.md` are done: the
-`backend/`/`frontend/` directory skeleton exists (T001, matching `plan.md` § Project Structure),
-and `backend/` is now a real Strapi 5 TypeScript project (`create-strapi-app@5.54.0`, SQLite for
-local dev per research.md), with `npm install`/`npm run build` verified working. `frontend/` is
-still empty except `.gitkeep` files and `tests/structure/test_layout.sh` — do not assume any
-frontend build command works until T003 lands it.
+**T001–T009** of 59 tasks in `specs/001-questionnaire-platform/tasks.md` are done (each with a
+recorded reviewer-subagent verdict). What exists today:
+
+- `backend/` — Strapi 5 TypeScript project (`create-strapi-app@5.54.0`, T002). SQLite by default
+  for local dev, PostgreSQL via `DATABASE_CLIENT=postgres` with the `pg` driver installed (T006).
+  User content-type extended with a business `role` enum (T007). `GET /health` → 200
+  `{"status":"ok"}` / 503 `{"status":"degraded","reason":...}`, registered at the bare `/health`
+  path via `strapi.server.routes()` in `src/index.ts` as well as `/api/health` (T008).
+  Structured JSON logs on stdout via `config/logger.ts`, level from `LOG_LEVEL` (default `http`)
+  (T009); Strapi's startup banner is still plain `console.log`, not JSON.
+- `frontend/` — Next.js App Router + TypeScript project (`create-next-app`, T003); `npm run build`
+  works. No application pages yet.
+- Tooling — ESLint + Prettier in both projects (`npm run lint`, `npm run format:check`, T004);
+  root `.env.example` documents DB/JWT/SMTP/API-URL variables (T005).
+- Tests — so far only shell scripts under `tests/structure/*.sh` (run each one; all should pass).
+  No Jest/contract/integration test harness exists yet (starts with T011+).
+
+**Open risk carried forward from T007** (see its `tasks.md` annotation): the custom `role` enum
+overwrites Strapi's built-in `users-permissions` `role` relation, which breaks authenticated
+permission resolution. Resolve it (rename the field, or amend `data-model.md` + `plan.md`
+Complexity Tracking) before any login/auth/permission-gated task.
 
 ## Source of truth for requirements and design
 

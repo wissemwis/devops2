@@ -87,7 +87,7 @@ self-regenerates a `.gitignore` excluding itself on every run.
 
 ## Current state
 
-**T001–T009** of 59 tasks in `specs/001-questionnaire-platform/tasks.md` are done (each with a
+**T001–T010** of 59 tasks in `specs/001-questionnaire-platform/tasks.md` are done (each with a
 recorded reviewer-subagent verdict). What exists today:
 
 - `backend/` — Strapi 5 TypeScript project (`create-strapi-app@5.54.0`, T002). SQLite by default
@@ -101,6 +101,10 @@ recorded reviewer-subagent verdict). What exists today:
   works. No application pages yet.
 - Tooling — ESLint + Prettier in both projects (`npm run lint`, `npm run format:check`, T004);
   root `.env.example` documents DB/JWT/SMTP/API-URL variables (T005).
+- `docker-compose.yml` — local dev stack (T010): `db` (postgres:16, port 5432), `backend`
+  (node:20 + bind mount, `npm run develop`, :1337, healthcheck on `/health`), `frontend` (node:20,
+  `npm run dev`, :3000). No Dockerfiles yet (T055). `cp .env.example .env && docker compose up -d`.
+  Caveat: the bind mount leaves root-owned `backend/types/generated/` files on the host.
 - Tests — so far only shell scripts under `tests/structure/*.sh` (run each one; all should pass).
   No Jest/contract/integration test harness exists yet (starts with T011+).
 

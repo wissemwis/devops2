@@ -74,8 +74,7 @@ The canonical command order for this feature (already run once; re-run only to a
 Kit's `tasks.md` checklist format (`- [ ] T001 ...`). Write task briefs by hand when dispatching
 implementer subagents; `scripts/review-package` (diff-based) works unmodified. The
 `subagent-driven-development` workspace (`.superpowers/sdd/`) self-regenerates a `.gitignore`
-excluding itself on every run — this project tracks its content anyway (ledger, briefs,
-reports) via `git add -f`, so future dispatches need the same `-f`.
+excluding itself on every run.
 
 ## Current state
 

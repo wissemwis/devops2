@@ -1,0 +1,145 @@
+# docker-compose.yml — local development stack (T010, Principe III — IaC et
+# Reproductibilité).
+#
+# Wires db (PostgreSQL) + backend (Strapi) + frontend (Next.js) for local
+# development, per plan.md Constraints and research.md's V1 deployment note:
+# this file is not the V1 production deployment (Vercel + Strapi Cloud, see
+# research.md § Déploiement V1) but "reste utilisé pour le développement
+# local et deviendra la base du déploiement auto-hébergé à partir de
+# S5-S7". No Dockerfile here on purpose — Dockerfiles are T055; backend/
+# and frontend/ run on the official node:20 image with their source
+# bind-mounted and node_modules kept in a named volume so a Linux container
+# install never pollutes the host checkout (e.g. native modules like
+# better-sqlite3/node-gyp builds).
+#
+# Secrets (Principe IV): every credential below is `${VAR}` interpolation
+# from the environment (see .env.example at the repo root — `cp .env.example
+# .env` before `docker compose up`), never a literal. The one exception is
+# DATABASE_URL, deliberately set to an empty string on the backend service:
+# backend/config/database.ts gives DATABASE_URL precedence over
+# DATABASE_HOST/PORT/... when it parses truthy, but .env.example ships a
+# non-empty placeholder DATABASE_URL (documenting the var for the V1/managed
+# deployment); an empty string is falsy, so pg's ConnectionParameters skips
+# parsing it and DATABASE_HOST=db wins (verified against the installed `pg`
+# driver's lib/connection-parameters.js).
+#
+# Ports (Principe IV — Sécurité par défaut, final-fix wave B2): every
+# published port is bound to 127.0.0.1 only, never 0.0.0.0 — this is a local
+# dev stack, not something meant to be reachable from other hosts.
+#
+# Non-root (final-fix wave B1): backend and frontend run as the node:20
+# image's built-in non-root `node` user (uid:gid 1000:1000 — this repo's
+# dev host also uses uid 1000, so bind-mounted files land owned by the host
+# user, not root), parameterised as `${UID:-1000}:${GID:-1000}` in case a
+# contributor's host uid differs. Docker creates a NAMED volume's mountpoint
+# owned by root on first use, and a service already running as uid 1000 has
+# no permission to chown it — so a tiny one-shot `init` service (default
+# image user: root) chowns both node_modules volumes once before backend/
+# frontend mount them; backend/frontend `depends_on: init:
+# condition: service_completed_successfully` so this always runs first. No
+# Dockerfile is added for this — see the header note above.
+
+services:
+  init:
+    image: node:20
+    command: sh -c "chown -R ${UID:-1000}:${GID:-1000} /mnt/backend-node-modules /mnt/frontend-node-modules"
+    volumes:
+      - backend-node-modules:/mnt/backend-node-modules
+      - frontend-node-modules:/mnt/frontend-node-modules
+
+  db:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: ${DATABASE_USERNAME}
+      POSTGRES_PASSWORD: ${DATABASE_PASSWORD}
+      POSTGRES_DB: ${DATABASE_NAME}
+    volumes:
+      - db-data:/var/lib/postgresql/data
+    ports:
+      # Published so the quickstart's natively-run backend
+      # (`docker compose up -d db` then `npm run develop`) can reach it.
+      # 127.0.0.1 only — see file header, Principe IV.
+      - "127.0.0.1:5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DATABASE_USERNAME} -d ${DATABASE_NAME}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  backend:
+    image: node:20
+    user: "${UID:-1000}:${GID:-1000}"
+    working_dir: /app
+    command: sh -c "npm ci && npm run develop"
+    volumes:
+      - ./backend:/app
+      - backend-node-modules:/app/node_modules
+    ports:
+      - "127.0.0.1:1337:1337"
+    environment:
+      DATABASE_CLIENT: postgres
+      # Neutralised on purpose — see the file header note above.
+      DATABASE_URL: ""
+      DATABASE_HOST: db
+      # db's container-internal port (the service network alias "db" always
+      # listens on Postgres's default 5432) — independent of the host-side
+      # port mapping above, which a contributor could change without
+      # affecting this value.
+      DATABASE_PORT: 5432
+      DATABASE_NAME: ${DATABASE_NAME}
+      DATABASE_USERNAME: ${DATABASE_USERNAME}
+      DATABASE_PASSWORD: ${DATABASE_PASSWORD}
+      DATABASE_SSL: "false"
+      APP_KEYS: ${APP_KEYS}
+      ADMIN_JWT_SECRET: ${ADMIN_JWT_SECRET}
+      API_TOKEN_SALT: ${API_TOKEN_SALT}
+      TRANSFER_TOKEN_SALT: ${TRANSFER_TOKEN_SALT}
+      JWT_SECRET: ${JWT_SECRET}
+      ENCRYPTION_KEY: ${ENCRYPTION_KEY}
+      # Falls back to "http" — an unset/empty LOG_LEVEL would otherwise
+      # resolve to "" and make winston log everything (final-fix wave B3).
+      LOG_LEVEL: ${LOG_LEVEL:-http}
+    depends_on:
+      db:
+        condition: service_healthy
+      init:
+        condition: service_completed_successfully
+    healthcheck:
+      # curl/wget are not guaranteed in the node:20 image; node itself is.
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "require('http').get('http://localhost:1337/health', (res) => { process.exit(res.statusCode === 200 ? 0 : 1); }).on('error', () => process.exit(1));",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+      start_period: 60s
+
+  frontend:
+    image: node:20
+    user: "${UID:-1000}:${GID:-1000}"
+    working_dir: /app
+    command: sh -c "npm ci && npm run dev -- -H 0.0.0.0"
+    volumes:
+      - ./frontend:/app
+      - frontend-node-modules:/app/node_modules
+    ports:
+      - "127.0.0.1:3000:3000"
+    environment:
+      # The value the *browser* must reach, not the Docker-network name —
+      # deliberately literal (not from .env.example, whose
+      # NEXT_PUBLIC_API_BASE_URL documents the V1/production backend URL).
+      NEXT_PUBLIC_API_BASE_URL: http://localhost:1337
+    depends_on:
+      backend:
+        condition: service_started
+      init:
+        condition: service_completed_successfully
+
+volumes:
+  db-data:
+  backend-node-modules:
+  frontend-node-modules:

@@ -78,7 +78,7 @@ store and default roles already exist):
   (`strapi.store({ type: 'plugin', name: 'users-permissions' })`); if `allow_register` is not
   already `false`, writes it back as `false`, preserving every other value. Configuration as
   code: re-enabling registration in the admin panel is reverted at the next start — stated in
-  the module comment.
+  `data-model.md` (no code comments, CLAUDE.md).
 - Native roles kept as they are: `Public` (future anonymous access, FR-007) and
   `Authenticated` (still `default_role`, no longer assigned since registration is closed).
 - `repondant` is created for FR-016 but gets no permission: respondents answer without an

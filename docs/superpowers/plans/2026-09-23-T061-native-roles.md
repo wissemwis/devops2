@@ -19,6 +19,7 @@
 - Accounts are created by an administrator only; public registration closed: plugin store `advanced.allow_register === false`, and `POST /api/auth/local/register` answers `400` with `error.message === "Register action is currently disabled"`.
 - The roles bootstrap never updates an existing role and grants no permission (permissions are T062).
 - Logs go through `strapi.log` (JSON on stdout, T009).
+- **No comments in code** (CLAUDE.md "Code conventions"): no new comment in any source, test, config or script file — names and tests carry the intent; explanations go in commit messages, `tasks.md` annotations, `data-model.md` or this plan. Existing comments may stay; a comment made wrong by a change is deleted, not rewritten.
 - No secret committed (Principe IV): the dummy secrets live only in the test helper.
 - Test files are named `*.test.ts` (plan.md Testing; T071). Jest runs with `maxWorkers: 1`.
 - Node is not on this machine's PATH: prepend `/tmp/claude-1000/-project-devops2/f0c0f41e-6d12-45e7-a390-b175e6f2473f/scratchpad/node-v22.12.0-linux-x64/bin` (portable Node 22) to `PATH` in every shell that runs `npm`, `node` or the structure tests.
@@ -99,7 +100,6 @@ In `backend/tsconfig.json`, add `"tests/"` to `"exclude"` (next to `"dist/"`) so
 import path from 'node:path';
 import { compileStrapi } from '@strapi/strapi';
 
-// Strapi loads its config and src from dist/: compile the TypeScript app once per test run.
 export default async function globalSetup(): Promise<void> {
   await compileStrapi({ appDir: path.resolve(__dirname, '..', '..') });
 }
@@ -113,8 +113,6 @@ import path from 'node:path';
 import { createStrapi } from '@strapi/strapi';
 import type { Core } from '@strapi/strapi';
 
-// In-process Strapi for integration/contract tests (introduced by T061, reused from T011 on).
-// Test-only environment: throwaway SQLite file, dummy secrets, quiet logs.
 const appDir = path.resolve(__dirname, '..', '..');
 const TEST_DATABASE_FILE = path.join(appDir, '.tmp', 'test.db');
 
@@ -154,7 +152,7 @@ export async function teardownStrapi(): Promise<void> {
 }
 ```
 
-If `createStrapi`'s options type rejects `serveAdminPanel`, drop that key; if `instance.destroy()` leaves the process hanging, close `instance.server.httpServer` and `instance.db.connection.destroy()` explicitly instead. Record either adjustment in the task report.
+If `createStrapi`'s options type rejects `serveAdminPanel`, drop that key; if `instance.destroy()` leaves the process hanging, close `instance.server.httpServer` and `instance.db.connection.destroy()` explicitly instead. Record either adjustment in the task report. The shell test in Step 4 has no header comment either: its purpose is recorded in the `tasks.md` T061 annotation (Task 3).
 
 - [ ] **Step 3: Write the failing integration test**
 
@@ -233,14 +231,6 @@ describe('User content-type (T061, FR-016)', () => {
 
 ```bash
 #!/bin/bash
-
-# Drift test for the users-permissions User extension (T061, FR-016):
-# backend/src/extensions/users-permissions/content-types/user/schema.json must keep every
-# attribute of the installed plugin's native User schema identical (Strapi 5 replaces the
-# plugin's `attributes` block wholesale, so they are copied — including the native `role`
-# relation), add a required `nom` (data-model.md Utilisateur), and hold no `role` enum (T007).
-# A Strapi upgrade that changes the native schema makes this test fail instead of silently
-# breaking authentication. Replaces tests/structure/test_user_role.sh (T007).
 
 cd "$(git rev-parse --show-toplevel)"
 
@@ -519,17 +509,6 @@ Expected: FAIL — `Cannot find module '../../src/bootstrap/roles'`.
 ```ts
 import type { Core } from '@strapi/strapi';
 
-/**
- * FR-016 business roles as native users-permissions roles (T061, data-model.md Utilisateur).
- *
- * Runs at every start (Principe III — no manual admin step on any environment):
- * - `ensureBusinessRoles` creates a role only when no role of that `type` exists; it never
- *   updates an existing one, so names, descriptions and permissions edited in the admin panel
- *   survive restarts. It grants no permission (per-endpoint permissions: T062).
- * - `closePublicRegistration` forces `allow_register: false` (accounts are created by an
- *   administrator — Principe IV). Configuration as code: re-enabling registration in the admin
- *   panel is reverted at the next start.
- */
 export const BUSINESS_ROLES = [
   {
     type: 'auteur',
@@ -575,15 +554,9 @@ In `backend/src/index.ts`, add the import next to the health controller import:
 import { closePublicRegistration, ensureBusinessRoles } from './bootstrap/roles';
 ```
 
-and replace the empty `bootstrap` (and its generic comment) with:
+and replace the empty `bootstrap` and its generic scaffold comment with (no new comment):
 
 ```ts
-  /**
-   * Runs after the plugins' bootstrap (the users-permissions store and default roles exist).
-   * Creates the FR-016 business roles and closes public registration — see
-   * `./bootstrap/roles.ts` (T061). Errors propagate: Strapi refuses to start rather than
-   * running without its roles.
-   */
   async bootstrap({ strapi }: { strapi: Core.Strapi }) {
     await ensureBusinessRoles(strapi);
     await closePublicRegistration(strapi);
@@ -618,9 +591,9 @@ Expected: every structure script `Failed: 0`; Jest all green; build OK; lint sho
 
 ```bash
 cd /project/devops2
-CREATED_ENV=0; [ -f .env ] || { cp .env.example .env; CREATED_ENV=1; }   # never overwrite a real .env
+CREATED_ENV=0; [ -f .env ] || { cp .env.example .env; CREATED_ENV=1; }
 docker compose up -d
-# wait until backend is healthy (docker compose ps), then:
+until [ "$(docker compose ps --format '{{.Health}}' backend)" = healthy ]; do sleep 5; done
 docker compose logs backend | grep -E 'Created users-permissions role|Closed public registration'
 curl -s -o /dev/null -w '%{http_code}\n' -X POST http://127.0.0.1:1337/api/auth/local/register \
   -H 'Content-Type: application/json' -d '{"username":"x-signup","email":"x@example.test","password":"Passw0rd!"}'

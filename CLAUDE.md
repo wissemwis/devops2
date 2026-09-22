@@ -34,6 +34,14 @@ that made it binding are archived, with documentation, in `extension.save/` — 
 `extension.save/README.md`. Nothing in that folder is active. The `tasks.md` annotations of
 T001–T010 still describe how those tasks were built and reviewed.
 
+## Code conventions
+
+- **No comments in code.** Do not add comments to source, test, configuration or script files
+  (`//`, `/* */`, JSDoc, `#` in shell/YAML, etc.) — including in code written into
+  implementation plans. Clear names, small functions and tests carry the intent; the *why*
+  goes in commit messages, `tasks.md` annotations and the spec/plan documents. Existing
+  comments may stay; when a change makes one wrong, delete it rather than rewrite it.
+
 ## Current state
 
 **T001–T010** of 59 tasks in `specs/001-questionnaire-platform/tasks.md` are done (each with a

@@ -70,4 +70,26 @@ describe('onRequestError (T060, Principe V)', () => {
 
     expect(write).not.toHaveBeenCalled();
   });
+
+  it('includes a digest set on the Error in the logged error', async () => {
+    const failure = new Error('boom') as Error & { digest?: string };
+    failure.digest = 'abc123';
+
+    await onRequestError(failure, request, context);
+
+    const entry = JSON.parse(logged()[0]);
+    expect(entry.error.digest).toBe('abc123');
+  });
+
+  it('logs a thrown plain object as JSON', async () => {
+    await onRequestError({ code: 42 }, request, context);
+
+    expect(JSON.parse(logged()[0]).error).toBe('{"code":42}');
+  });
+
+  it('logs a thrown null-prototype object without throwing', async () => {
+    await onRequestError(Object.create(null), request, context);
+
+    expect(logged()).toHaveLength(1);
+  });
 });

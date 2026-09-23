@@ -84,4 +84,58 @@ describe('frontend JSON logger (T060, Principe V)', () => {
 
     expect(entries().map((entry) => entry.message)).toEqual(['unset-info', 'http-info']);
   });
+
+  it('serialises an Error cause recursively', () => {
+    const root = new Error('root cause');
+    const failure = new Error('wrapper failed', { cause: root });
+
+    logger.error('Request failed', { error: failure });
+
+    const [entry] = entries();
+    expect(entry.error).toMatchObject({
+      name: 'Error',
+      message: 'wrapper failed',
+      stack: failure.stack,
+    });
+    expect((entry.error as Record<string, unknown>).cause).toEqual({
+      name: 'Error',
+      message: 'root cause',
+      stack: root.stack,
+    });
+  });
+
+  it('copies a string digest property from an Error', () => {
+    const failure = new Error('boom') as Error & { digest?: string };
+    failure.digest = 'abc123';
+
+    logger.error('Request failed', { error: failure });
+
+    const [entry] = entries();
+    expect((entry.error as Record<string, unknown>).digest).toBe('abc123');
+  });
+
+  it('never throws and logs a logError when a field is circular', () => {
+    const circular: Record<string, unknown> = {};
+    circular.self = circular;
+
+    expect(() => logger.info('Loop', { circular })).not.toThrow();
+
+    expect(lines()).toHaveLength(1);
+    const [entry] = entries();
+    expect(entry.level).toBe('info');
+    expect(entry.message).toBe('Loop');
+    expect(typeof entry.timestamp).toBe('string');
+    expect(typeof entry.logError).toBe('string');
+  });
+
+  it('never throws and logs a logError when a field is a BigInt', () => {
+    expect(() => logger.info('Big', { big: BigInt(10) })).not.toThrow();
+
+    expect(lines()).toHaveLength(1);
+    const [entry] = entries();
+    expect(entry.level).toBe('info');
+    expect(entry.message).toBe('Big');
+    expect(typeof entry.timestamp).toBe('string');
+    expect(typeof entry.logError).toBe('string');
+  });
 });

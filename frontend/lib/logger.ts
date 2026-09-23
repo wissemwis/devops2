@@ -15,7 +15,15 @@ function threshold(): number {
 
 function serialise(value: unknown): unknown {
   if (value instanceof Error) {
-    return { name: value.name, message: value.message, stack: value.stack };
+    const result: LogFields = { name: value.name, message: value.message, stack: value.stack };
+    if (value.cause !== undefined) {
+      result.cause = serialise(value.cause);
+    }
+    const digest = (value as Error & { digest?: unknown }).digest;
+    if (typeof digest === 'string') {
+      result.digest = digest;
+    }
+    return result;
   }
   return value;
 }
@@ -25,8 +33,20 @@ function write(level: LogLevel, message: string, fields: LogFields = {}): void {
   const extra = Object.fromEntries(
     Object.entries(fields).map(([key, value]) => [key, serialise(value)]),
   );
-  const entry = { ...extra, level, message, timestamp: new Date().toISOString() };
-  process.stdout.write(`${JSON.stringify(entry)}\n`);
+  const timestamp = new Date().toISOString();
+  const entry = { ...extra, level, message, timestamp };
+  let line: string;
+  try {
+    line = JSON.stringify(entry);
+  } catch (error) {
+    line = JSON.stringify({
+      level,
+      message,
+      timestamp,
+      logError: error instanceof Error ? error.message : String(error),
+    });
+  }
+  process.stdout.write(`${line}\n`);
 }
 
 export const logger: Record<LogLevel, (message: string, fields?: LogFields) => void> = {

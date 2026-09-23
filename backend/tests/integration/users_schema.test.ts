@@ -26,12 +26,6 @@ async function findOrCreateRole(type: string): Promise<{ id: number; type: strin
 describe('User content-type (T061, FR-016)', () => {
   it('resolves the permissions of a user authenticated with a business role', async () => {
     const auteur = await findOrCreateRole('auteur');
-    await strapi.db.query('plugin::users-permissions.permission').create({
-      data: { action: 'plugin::users-permissions.user.me', role: auteur.id },
-    });
-    await strapi.db.query('plugin::users-permissions.permission').create({
-      data: { action: 'plugin::users-permissions.role.find', role: auteur.id },
-    });
     const user = await strapi.plugin('users-permissions').service('user').add({
       username: 'auteur-t061',
       email: 'auteur-t061@example.test',

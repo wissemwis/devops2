@@ -146,6 +146,10 @@ check_model "data['services']['backend']['environment'].get('DATABASE_HOST') == 
     "backend sets DATABASE_HOST=db"
 check_model "data['services']['backend']['environment'].get('DATABASE_URL', '__missing__') == ''" \
     "backend neutralises DATABASE_URL (empty) so DATABASE_HOST=db is not overridden by database.ts's connectionString precedence"
+for var in DEV_AUTEUR_EMAIL DEV_AUTEUR_PASSWORD DEV_AUTEUR_NOM; do
+    check_model "data['services']['backend']['environment'].get('$var', '__missing__') == ''" \
+        "backend passes $var through, empty when unset (T062)"
+done
 check_model "data['services']['backend'].get('depends_on', {}).get('db', {}).get('condition') == 'service_healthy'" \
     "backend depends_on db with condition service_healthy"
 check_model "data['services']['backend'].get('depends_on', {}).get('init', {}).get('condition') == 'service_completed_successfully'" \
@@ -281,6 +285,38 @@ else
     fail "backend LOG_LEVEL falls back to 'http' when LOG_LEVEL is unset in the env file" "$(cat "$TMP_ERR_NOLOG")"
 fi
 rm -f "$TMP_ENV_NOLOG" "$TMP_JSON_NOLOG" "$TMP_ERR_NOLOG"
+
+echo ""
+echo "--- published backend/frontend ports follow BIND_ADDRESS, loopback when unset, db always loopback ---"
+TMP_ENV_BIND=$(mktemp)
+TMP_JSON_BIND=$(mktemp)
+TMP_ERR_BIND=$(mktemp)
+for bind_case in unset open; do
+    grep -v '^BIND_ADDRESS=' .env.example >"$TMP_ENV_BIND"
+    expected=127.0.0.1
+    if [ "$bind_case" = open ]; then
+        echo "BIND_ADDRESS=0.0.0.0" >>"$TMP_ENV_BIND"
+        expected=0.0.0.0
+    fi
+    if env -u BIND_ADDRESS docker compose -f "$COMPOSE_FILE" --env-file "$TMP_ENV_BIND" config --format json >"$TMP_JSON_BIND" 2>"$TMP_ERR_BIND"; then
+        if python3 -c "
+import json, sys
+with open('$TMP_JSON_BIND') as f:
+    data = json.load(f)
+services = data['services']
+ok = all(p.get('host_ip') == '$expected' for name in ('backend', 'frontend') for p in services[name].get('ports', []))
+ok = ok and all(p.get('host_ip') == '127.0.0.1' for p in services['db'].get('ports', []))
+sys.exit(0 if ok else 1)
+" 2>/dev/null; then
+            pass "BIND_ADDRESS $bind_case: backend/frontend ports bound to $expected, db to 127.0.0.1"
+        else
+            fail "BIND_ADDRESS $bind_case: backend/frontend ports bound to $expected, db to 127.0.0.1" "resolved host_ip did not match"
+        fi
+    else
+        fail "BIND_ADDRESS $bind_case: backend/frontend ports bound to $expected, db to 127.0.0.1" "$(cat "$TMP_ERR_BIND")"
+    fi
+done
+rm -f "$TMP_ENV_BIND" "$TMP_JSON_BIND" "$TMP_ERR_BIND"
 
 echo ""
 echo "=== Test Results ==="

@@ -26,7 +26,14 @@ cd ../frontend && npm install && npm run dev
 
 ## Scénario 1 — Créer et publier (User Story 1, P1)
 
-1. Se connecter en tant qu'auteur (compte de test seedé).
+1. Se connecter en tant qu'auteur (compte de test seedé) : définir `DEV_AUTEUR_EMAIL` et
+   `DEV_AUTEUR_PASSWORD` (et optionnellement `DEV_AUTEUR_NOM`) avant de démarrer le backend —
+   l'emplacement dépend du mode de démarrage utilisé dans « Démarrage local » ci-dessus : le
+   fichier `.env` racine (lu par `docker-compose.yml`) si le backend tourne via
+   `docker compose up`, ou `backend/.env` si le backend tourne nativement
+   (`cd backend && npm run develop`, comme dans « Démarrage local »). Dans les deux cas, le
+   backend crée ce compte `auteur` au démarrage, uniquement en développement
+   (`NODE_ENV=development`). Ne jamais définir ces variables dans un déploiement.
 2. Créer un questionnaire, ajouter 3 questions (une de chaque type), visibilité `publique`.
 3. Publier.
 4. **Attendu** : `statut = publié`, un lien public est affiché et fonctionnel.

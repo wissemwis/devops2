@@ -90,6 +90,16 @@ echo "--- Frontend / cross-cutting variables (per T053: API base URL) ---"
 assert_contains "$ENV_FILE" "^NEXT_PUBLIC_API_BASE_URL=" "$ENV_FILE documents NEXT_PUBLIC_API_BASE_URL"
 
 echo ""
+echo "--- Development auteur account (T062, development only) ---"
+for var in DEV_AUTEUR_EMAIL DEV_AUTEUR_PASSWORD DEV_AUTEUR_NOM; do
+    assert_contains "$ENV_FILE" "^${var}=$" "$ENV_FILE documents $var with an empty value"
+done
+
+echo ""
+echo "--- Local stack network exposure (docker-compose.yml, loopback by default) ---"
+assert_contains "$ENV_FILE" "^BIND_ADDRESS=127.0.0.1$" "$ENV_FILE documents BIND_ADDRESS with the loopback default"
+
+echo ""
 echo "--- Principe IV: no real secret committed, only obvious placeholders ---"
 assert_not_contains "$ENV_FILE" "BEGIN.*PRIVATE KEY" "$ENV_FILE contains no embedded private key material"
 test_count=$((test_count + 1))

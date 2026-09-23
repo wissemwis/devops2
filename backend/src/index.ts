@@ -7,6 +7,8 @@ import {
   setDefaultRespondentRole,
   subscribeDefaultRespondentRole,
 } from './bootstrap/roles';
+import { grantRolePermissions } from './bootstrap/permissions';
+import { ensureDevAuteurAccount } from './bootstrap/dev-account';
 
 export default {
   /**
@@ -46,8 +48,10 @@ export default {
 
   async bootstrap({ strapi }: { strapi: Core.Strapi }) {
     await ensureBusinessRoles(strapi);
+    await grantRolePermissions(strapi);
     await closePublicRegistration(strapi);
     await setDefaultRespondentRole(strapi);
     subscribeDefaultRespondentRole(strapi);
+    await ensureDevAuteurAccount(strapi);
   },
 };

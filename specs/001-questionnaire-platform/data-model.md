@@ -19,7 +19,9 @@ la relation native et cassait la résolution des permissions) mais la relation n
 `users-permissions` vers ses rôles ; les trois rôles FR-016 sont des rôles `users-permissions`
 de types `auteur`, `repondant`, `administrateur`. `nom` est ajouté par l'extension
 `backend/src/extensions/users-permissions/content-types/user/schema.json` ; `dateInscription`
-est le `createdAt` natif.
+est le `createdAt` natif. Les permissions de chaque rôle sont déclarées dans `ROLE_PERMISSIONS`
+(`backend/src/bootstrap/permissions.ts`) et accordées à chaque démarrage (T062) ; chaque
+endpoint ajoute son action à cette table.
 
 Les comptes sont créés par un administrateur (panneau d'admin Strapi ; compte de test de
 développement : T062) ; l'inscription publique est fermée (`allow_register: false`, réappliqué

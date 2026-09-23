@@ -1,8 +1,10 @@
 import request from 'supertest';
-import type { Core } from '@strapi/strapi';
+import type { Core, Modules } from '@strapi/strapi';
 import { setupStrapi, teardownStrapi } from '../helpers/strapi';
 
 const ROLE_UID = 'plugin::users-permissions.role';
+const USER_UID = 'plugin::users-permissions.user';
+type UserInput = Modules.Documents.Params.Data.Input<typeof USER_UID>;
 
 let strapi: Core.Strapi;
 
@@ -52,16 +54,15 @@ describe('User content-type (T061, FR-016)', () => {
 
   it('rejects a user without nom', async () => {
     const auteur = await findOrCreateRole('auteur');
-    await expect(
-      strapi.documents('plugin::users-permissions.user').create({
-        data: {
-          username: 'sans-nom',
-          email: 'sans-nom@example.test',
-          password: 'Passw0rd!',
-          provider: 'local',
-          role: auteur.id,
-        },
-      }),
-    ).rejects.toThrow(/nom/);
+    const dataWithoutNom = {
+      username: 'sans-nom',
+      email: 'sans-nom@example.test',
+      password: 'Passw0rd!',
+      provider: 'local',
+      role: auteur.id,
+    } as Partial<UserInput> as UserInput;
+    await expect(strapi.documents(USER_UID).create({ data: dataWithoutNom })).rejects.toThrow(
+      /nom/,
+    );
   });
 });

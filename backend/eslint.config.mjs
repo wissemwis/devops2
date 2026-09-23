@@ -12,6 +12,7 @@ export default tseslint.config(
       '.strapi/**',
       'public/**',
       'database/**',
+      'types/generated/**',
     ],
   },
   js.configs.recommended,

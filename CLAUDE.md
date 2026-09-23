@@ -44,7 +44,7 @@ T001–T010 still describe how those tasks were built and reviewed.
 
 ## Current state
 
-**T001–T010**, **T060**, **T061** and **T062** of 76 tasks in `specs/001-questionnaire-platform/tasks.md` are done
+**T001–T010**, **T011–T021**, **T060**, **T061** and **T062** of 76 tasks in `specs/001-questionnaire-platform/tasks.md` are done
 (each with a recorded reviewer-subagent verdict). What exists today:
 
 - `backend/` — Strapi 5 TypeScript project (`create-strapi-app@5.54.0`, T002). SQLite by default
@@ -52,12 +52,19 @@ T001–T010 still describe how those tasks were built and reviewed.
   User has the native users-permissions `role` relation plus a required `nom`; FR-016 roles
   `auteur`/`repondant`/`administrateur` are created at boot and public registration is closed
   (T061). Role permissions come from `ROLE_PERMISSIONS` in `src/bootstrap/permissions.ts`
-  (granted at boot, additive; `auteur`/`administrateur`: `users/me`, `role.find`); in development,
+  (granted at boot, additive; `auteur`: `users/me`, `role.find`, questionnaire
+  `create`/`publish`/`close`, question `add`; `administrateur`: `users/me`, `role.find`,
+  questionnaire `close`; `repondant`: none); in development,
   `DEV_AUTEUR_EMAIL`/`DEV_AUTEUR_PASSWORD` create a test `auteur` account at boot (T062).
   `GET /health` → 200 `{"status":"ok"}` / 503 `{"status":"degraded","reason":...}`, registered at the bare `/health`
   path via `strapi.server.routes()` in `src/index.ts` as well as `/api/health` (T008).
   Structured JSON logs on stdout via `config/logger.ts`, level from `LOG_LEVEL` (default `http`)
-  (T009); Strapi's startup banner is still plain `console.log`, not JSON.
+  (T009); Strapi's startup banner is still plain `console.log`, not JSON. Content-types
+  `questionnaire` and `question` (ASCII enum codes, `draftAndPublish: false`, `options` JSON for
+  `choix_multiple`); routes `POST /api/questionnaires`, `PATCH /api/questionnaires/:id/questions`,
+  `POST /api/questionnaires/:id/publish`, `POST /api/questionnaires/:id/close` in Strapi's `data`
+  envelope, ownership in `api/questionnaire/services/questionnaire-access.ts` (404/403), 409 on a
+  wrong transition, 422 when publishing without question (US1 backend, T011–T021).
 - `frontend/` — Next.js App Router + TypeScript project (`create-next-app`, T003); `npm run build`
   works. No application pages yet. `GET /health` → 200 `{"status":"ok"}` (liveness only,
   `app/health/route.ts`); server-side JSON logs on stdout via `lib/logger.ts` (`LOG_LEVEL`, default
@@ -79,7 +86,8 @@ T001–T010 still describe how those tasks were built and reviewed.
   there). No Dockerfiles yet (T055). `cp .env.example .env && docker compose up -d`.
 - Tests — `tests/structure/*.sh` shell scripts, plus a Jest + Supertest harness in `backend/`
   (`npm test`; in-process Strapi on a throwaway SQLite file, `tests/helpers/strapi.ts`, introduced
-  by T061), and a Vitest harness in `frontend/` (`npm test`, `tests/**/*.test.ts`, T060).
+  by T061; `tests/contract/` and `tests/unit/` added by T011–T021), and a Vitest harness in
+  `frontend/` (`npm test`, `tests/**/*.test.ts`, T060).
 
 The T007 `role` enum risk is resolved by T061.
 

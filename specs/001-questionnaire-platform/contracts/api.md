@@ -15,33 +15,54 @@ jeton d'invitation signé en query string pour l'accès à un questionnaire priv
 
 ## Questionnaires
 
+> **Amendement 2026-09-23 (US1 backend, T011–T021)** — s'applique aux routes de l'API de contenu
+> sous `/api/*` (pas à `GET /health`, qui reste plate par construction ; les sections Réponses et
+> Résultats plus bas montrent encore des corps plats parce que leurs routes ne sont pas
+> implémentées — elles seront réenveloppées à leur implémentation) :
+> - Corps au format natif Strapi 5 : requête `{ "data": { … } }`, réponse `{ "data": { "documentId": …, … }, "meta": {} }`,
+>   erreur `{ "data": null, "error": { "status", "name", "message", "details" } }`.
+> - `:id` est le `documentId` Strapi (chaîne).
+> - Valeurs d'énumération en codes ASCII : `statut` ∈ `brouillon`/`publie`/`ferme`, `visibilite` ∈ `publique`/`privee`.
+> - Sans authentification, ou avec un rôle qui n'a pas l'action : `403` (`error.name: "ForbiddenError"`).
+>   Auteur non propriétaire : `403` (`error.name: "PolicyError"`). Les deux valent `403` : un client
+>   doit distinguer les cas sur `error.status`, jamais sur `error.name`, qui n'est pas contractuel.
+>   Questionnaire inconnu : `404`. Transition impossible depuis le statut courant : `409`.
+
 ### POST /api/questionnaires
 
 - Auth : auteur.
-- Body: `{ "titre": string, "description"?: string, "visibilite": "publique"|"privée" }`
-- Réponse `201`: questionnaire créé, `statut: "brouillon"`. (FR-001)
+- Body: `{ "data": { "titre": string, "description"?: string, "visibilite": "publique"|"privee" } }`
+- Réponse `201`: questionnaire créé, `statut` toujours `brouillon`, `auteur` = appelant. (FR-001)
+- `400` si `titre` manque ou `visibilite` invalide.
 
 ### PATCH /api/questionnaires/:id/questions
 
 - Auth : auteur (propriétaire).
-- Body: `{ "texte": string, "type": "likert"|"choix_multiple"|"texte_libre", "position": int, "obligatoire": bool, "image"?: mediaId }`
+- Body: `{ "data": { "texte": string, "type": "likert"|"choix_multiple"|"texte_libre", "position": int, "obligatoire"?: bool, "options"?: string[], "image"?: mediaId } }`
+- `options` requis (≥ 2 libellés distincts) pour `choix_multiple`, interdit sinon.
 - Réponse `200`: question ajoutée. (FR-002, FR-003)
+- `400` si `options` invalides (absents ou < 2 libellés distincts non vides pour `choix_multiple`,
+  présents pour `likert`/`texte_libre`). `400` si position déjà prise. `409` si le questionnaire
+  n'est pas `brouillon`.
+- L'upload de l'image elle-même (`image?: mediaId`) n'est pas encore disponible : aucun rôle n'a
+  l'action d'upload et `image` n'est pas encore vérifié comme appartenant à l'appelant (T068).
 
 ### POST /api/questionnaires/:id/publish
 
 - Auth : auteur (propriétaire).
-- Précondition : au moins une question existe, sinon `422` (Edge Case).
-- Réponse `200`: `statut: "publié"`. (FR-005)
+- `409` si pas `brouillon`. `422` sans question (Edge Case).
+- Réponse `200`: `statut: "publie"`. (FR-005)
 
 ### POST /api/questionnaires/:id/close
 
 - Auth : auteur (propriétaire) ou administrateur.
-- Réponse `200`: `statut: "fermé"`. Toute tentative ultérieure de réponse renvoie `403`. (FR-006)
+- `409` si pas `publie`.
+- Réponse `200`: `statut: "ferme"`. Toute tentative ultérieure de réponse renvoie `403`. (FR-006)
 
 ### GET /api/questionnaires/:id
 
-- Auth : aucune si `visibilite: publique` et `statut: publié` ; jeton d'invitation requis si
-  `visibilite: privée` (FR-007, FR-008).
+- Auth : aucune si `visibilite: publique` et `statut: publie` ; jeton d'invitation requis si
+  `visibilite: privee` (FR-007, FR-008).
 - Réponse `200`: questionnaire + questions ordonnées par `position`.
 
 ### POST /api/questionnaires/:id/invitations

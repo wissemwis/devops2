@@ -1,0 +1,34 @@
+{
+  "kind": "collectionType",
+  "collectionName": "questionnaires",
+  "info": {
+    "singularName": "questionnaire",
+    "pluralName": "questionnaires",
+    "displayName": "Questionnaire"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "attributes": {
+    "titre": { "type": "string", "required": true },
+    "description": { "type": "text" },
+    "statut": {
+      "type": "enumeration",
+      "enum": ["brouillon", "publie", "ferme"],
+      "default": "brouillon",
+      "required": true
+    },
+    "visibilite": { "type": "enumeration", "enum": ["publique", "privee"], "required": true },
+    "auteur": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "plugin::users-permissions.user"
+    },
+    "questions": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::question.question",
+      "mappedBy": "questionnaire"
+    }
+  }
+}

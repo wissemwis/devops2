@@ -4,9 +4,20 @@ import { BUSINESS_ROLES } from './roles';
 export type BusinessRoleType = (typeof BUSINESS_ROLES)[number]['type'];
 
 export const ROLE_PERMISSIONS: Record<BusinessRoleType, readonly string[]> = {
-  auteur: ['plugin::users-permissions.user.me', 'plugin::users-permissions.role.find'],
+  auteur: [
+    'plugin::users-permissions.user.me',
+    'plugin::users-permissions.role.find',
+    'api::questionnaire.questionnaire.create',
+    'api::questionnaire.questionnaire.publish',
+    'api::questionnaire.questionnaire.close',
+    'api::question.question.add',
+  ],
   repondant: [],
-  administrateur: ['plugin::users-permissions.user.me', 'plugin::users-permissions.role.find'],
+  administrateur: [
+    'plugin::users-permissions.user.me',
+    'plugin::users-permissions.role.find',
+    'api::questionnaire.questionnaire.close',
+  ],
 };
 
 const ROLE_UID = 'plugin::users-permissions.role';

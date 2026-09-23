@@ -44,14 +44,17 @@ T001–T010 still describe how those tasks were built and reviewed.
 
 ## Current state
 
-**T001–T010** and **T061** of 76 tasks in `specs/001-questionnaire-platform/tasks.md` are done
+**T001–T010**, **T061** and **T062** of 76 tasks in `specs/001-questionnaire-platform/tasks.md` are done
 (each with a recorded reviewer-subagent verdict). What exists today:
 
 - `backend/` — Strapi 5 TypeScript project (`create-strapi-app@5.54.0`, T002). SQLite by default
   for local dev, PostgreSQL via `DATABASE_CLIENT=postgres` with the `pg` driver installed (T006).
   User has the native users-permissions `role` relation plus a required `nom`; FR-016 roles
   `auteur`/`repondant`/`administrateur` are created at boot and public registration is closed
-  (T061). `GET /health` → 200 `{"status":"ok"}` / 503 `{"status":"degraded","reason":...}`, registered at the bare `/health`
+  (T061). Role permissions come from `ROLE_PERMISSIONS` in `src/bootstrap/permissions.ts`
+  (granted at boot, additive; `auteur`/`administrateur`: `users/me`, `role.find`); in development,
+  `DEV_AUTEUR_EMAIL`/`DEV_AUTEUR_PASSWORD` create a test `auteur` account at boot (T062).
+  `GET /health` → 200 `{"status":"ok"}` / 503 `{"status":"degraded","reason":...}`, registered at the bare `/health`
   path via `strapi.server.routes()` in `src/index.ts` as well as `/api/health` (T008).
   Structured JSON logs on stdout via `config/logger.ts`, level from `LOG_LEVEL` (default `http`)
   (T009); Strapi's startup banner is still plain `console.log`, not JSON.

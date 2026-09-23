@@ -44,7 +44,7 @@ T001–T010 still describe how those tasks were built and reviewed.
 
 ## Current state
 
-**T001–T010**, **T061** and **T062** of 76 tasks in `specs/001-questionnaire-platform/tasks.md` are done
+**T001–T010**, **T060**, **T061** and **T062** of 76 tasks in `specs/001-questionnaire-platform/tasks.md` are done
 (each with a recorded reviewer-subagent verdict). What exists today:
 
 - `backend/` — Strapi 5 TypeScript project (`create-strapi-app@5.54.0`, T002). SQLite by default
@@ -59,13 +59,17 @@ T001–T010 still describe how those tasks were built and reviewed.
   Structured JSON logs on stdout via `config/logger.ts`, level from `LOG_LEVEL` (default `http`)
   (T009); Strapi's startup banner is still plain `console.log`, not JSON.
 - `frontend/` — Next.js App Router + TypeScript project (`create-next-app`, T003); `npm run build`
-  works. No application pages yet.
+  works. No application pages yet. `GET /health` → 200 `{"status":"ok"}` (liveness only,
+  `app/health/route.ts`); server-side JSON logs on stdout via `lib/logger.ts` (`LOG_LEVEL`, default
+  `info`; server-only — never import it from a client component), request errors logged by
+  `onRequestError` in `instrumentation.ts` (Node runtime only); Next.js's own banner/dev lines stay
+  plain text (T060).
 - Tooling — ESLint + Prettier in both projects (`npm run lint`, `npm run format:check`, T004);
   root `.env.example` documents DB/JWT/SMTP/API-URL variables (T005).
 - `docker-compose.yml` — local dev stack (T010, non-root/loopback fixes from the final-fix wave):
   `db` (postgres:16, `127.0.0.1:5432`), `backend` (node:20 + bind mount, `npm run develop`,
   `127.0.0.1:1337`, healthcheck on `/health`), `frontend` (node:20, `npm run dev`,
-  `127.0.0.1:3000`); every published port is loopback-only by default — `BIND_ADDRESS`
+  `127.0.0.1:3000`, healthcheck on `/health`); every published port is loopback-only by default — `BIND_ADDRESS`
   (default `127.0.0.1`) moves the backend/frontend ports to another interface, e.g. `0.0.0.0` in a
   local env file for LAN access; `db` always stays on loopback. `backend`/`frontend` run as the
   image's non-root `node` user (uid:gid 1000:1000), via a one-shot `init` helper service that
@@ -75,7 +79,7 @@ T001–T010 still describe how those tasks were built and reviewed.
   there). No Dockerfiles yet (T055). `cp .env.example .env && docker compose up -d`.
 - Tests — `tests/structure/*.sh` shell scripts, plus a Jest + Supertest harness in `backend/`
   (`npm test`; in-process Strapi on a throwaway SQLite file, `tests/helpers/strapi.ts`, introduced
-  by T061).
+  by T061), and a Vitest harness in `frontend/` (`npm test`, `tests/**/*.test.ts`, T060).
 
 The T007 `role` enum risk is resolved by T061.
 

@@ -173,6 +173,19 @@ else
     fail "backend healthcheck probes GET /health on port 1337" "healthcheck test was: $hc"
 fi
 
+hc_frontend="$(python3 -c "
+import json
+with open('$TMP_JSON') as f:
+    data = json.load(f)
+t = data['services']['frontend'].get('healthcheck', {}).get('test', [])
+print(' '.join(t))
+")"
+if echo "$hc_frontend" | grep -q "3000" && echo "$hc_frontend" | grep -q "/health"; then
+    pass "frontend healthcheck probes GET /health on port 3000"
+else
+    fail "frontend healthcheck probes GET /health on port 3000" "healthcheck test was: $hc_frontend"
+fi
+
 echo ""
 echo "--- frontend service (Next.js, Node 20, bind-mounted source) ---"
 check_model "data['services']['frontend']['image'] == 'node:20'" \

@@ -9,10 +9,15 @@ export const ROLE_PERMISSIONS: Record<BusinessRoleType, readonly string[]> = {
     'plugin::users-permissions.role.find',
     'api::questionnaire.questionnaire.create',
     'api::questionnaire.questionnaire.publish',
+    'api::questionnaire.questionnaire.close',
     'api::question.question.add',
   ],
   repondant: [],
-  administrateur: ['plugin::users-permissions.user.me', 'plugin::users-permissions.role.find'],
+  administrateur: [
+    'plugin::users-permissions.user.me',
+    'plugin::users-permissions.role.find',
+    'api::questionnaire.questionnaire.close',
+  ],
 };
 
 const ROLE_UID = 'plugin::users-permissions.role';

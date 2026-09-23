@@ -41,5 +41,20 @@ export default factories.createCoreController(UID, ({ strapi }) => {
       const output = await sanitizeOutput(updated, ctx);
       return transformResponse(output);
     },
+
+    async close(ctx) {
+      const questionnaire = await loadForAction(strapi, ctx.params.id, ctx.state.user, {
+        allowAdministrateur: true,
+      });
+      if (questionnaire.statut !== 'publie') {
+        throw createError(409, 'only a publie questionnaire can be closed');
+      }
+      const updated = await strapi.documents(UID).update({
+        documentId: questionnaire.documentId,
+        data: { statut: 'ferme' } as never,
+      });
+      const output = await sanitizeOutput(updated, ctx);
+      return transformResponse(output);
+    },
   };
 });

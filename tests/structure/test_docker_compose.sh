@@ -14,7 +14,7 @@
 # depends_on conditions, ports, env var wiring) via python3. Also checks
 # the raw YAML for secret literals (Principe IV).
 #
-# Extended in the final-fix wave (see .superpowers/sdd/tasks/final-fix-findings.md
+# Extended in the final-fix wave (see extension.save/superpowers-workspace/tasks/final-fix-findings.md
 # section B): backend/frontend run as the non-root node user (B1, via a
 # one-shot `init` helper service that chowns the node_modules volumes first),
 # all published ports are bound to 127.0.0.1 only (B2), and LOG_LEVEL falls

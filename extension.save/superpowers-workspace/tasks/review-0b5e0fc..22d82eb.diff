@@ -1,0 +1,1022 @@
+# Review package: 0b5e0fc..22d82eb
+
+## Commits
+22d82eb T010: record reviewer-subagent gate check, mark task complete
+4f67fd4 superpowers-bridge 0.4.0: run writing-plans between brainstorming and SDD
+c59f382 T010: Create docker-compose.yml wiring db, backend, frontend
+e9e4e87 superpowers-bridge 0.3.0: brainstorm in-scope tasks before implement
+
+## Files changed
+ .specify/extensions.yml                            |   2 +-
+ .../SKILL.md                                       |  97 ++++++--
+ .../speckit.superpowers-bridge.tdd-implement.md    |  97 ++++++--
+ .../extensions/superpowers-bridge/extension.yml    |   8 +-
+ CLAUDE.md                                          |  29 ++-
+ docker-compose.yml                                 | 109 +++++++++
+ .../speckit.superpowers-bridge.tdd-implement.md    |  97 ++++++--
+ extensions/superpowers-bridge/extension.yml        |   8 +-
+ specs/001-questionnaire-platform/tasks.md          |   2 +-
+ tests/structure/test_docker_compose.sh             | 248 +++++++++++++++++++++
+ 10 files changed, 616 insertions(+), 81 deletions(-)
+
+## Diff
+diff --git a/.specify/extensions.yml b/.specify/extensions.yml
+index b6ee8a0..a61924b 100644
+--- a/.specify/extensions.yml
++++ b/.specify/extensions.yml
+@@ -13,12 +13,12 @@ hooks:
+       ?
+     description: Delegates idea refinement to Superpowers brainstorming
+     condition: null
+   before_implement:
+   - extension: superpowers-bridge
+     command: speckit.superpowers-bridge.tdd-implement
+     enabled: true
+     optional: false
+     priority: 10
+     prompt: Execute speckit.superpowers-bridge.tdd-implement?
+-    description: Delegates task execution to Superpowers TDD + subagent-driven-development
++    description: Delegates task execution to Superpowers brainstorming + writing-plans (once per run) + TDD + subagent-driven-development
+     condition: null
+diff --git a/.specify/extensions/superpowers-bridge/.specify-dev/agent-commands/claude/speckit-superpowers-bridge-tdd-implement/SKILL.md b/.specify/extensions/superpowers-bridge/.specify-dev/agent-commands/claude/speckit-superpowers-bridge-tdd-implement/SKILL.md
+index 9b2a81a..7af48ad 100644
+--- a/.specify/extensions/superpowers-bridge/.specify-dev/agent-commands/claude/speckit-superpowers-bridge-tdd-implement/SKILL.md
++++ b/.specify/extensions/superpowers-bridge/.specify-dev/agent-commands/claude/speckit-superpowers-bridge-tdd-implement/SKILL.md
+@@ -1,58 +1,113 @@
+ ---
+ name: speckit-superpowers-bridge-tdd-implement
+-description: Execute tasks.md via Superpowers subagent-driven-development and test-driven-development instead of Spec Kit's built-in sequential executor
++description: Brainstorm the in-scope tasks, plan them with Superpowers writing-plans, then execute the plan via Superpowers subagent-driven-development and test-driven-development instead of Spec Kit's built-in sequential executor
+ compatibility: Requires spec-kit project structure with .specify/ directory
+ metadata:
+   author: Wissem Hamza
+   source: superpowers-bridge:commands/speckit.superpowers-bridge.tdd-implement.md
+ ---
+ 
+ # Superpowers TDD Implementation Bridge
+ 
+ ## Purpose
+ 
+ Replace /speckit.implement's default single-context task loop with Superpowers'
+-stricter workflow: a fresh implementer subagent per task, enforced
+-RED-GREEN-REFACTOR, and a two-stage review after each task.
++full workflow on the tasks this run will execute: an interactive
++`brainstorming` session, a `writing-plans` implementation plan, then
++`subagent-driven-development` on that plan — a fresh implementer subagent per
++plan task, enforced RED-GREEN-REFACTOR, and a two-stage review after each.
+ 
+ ## Behavior
+ 
+ 1. From FEATURE_DIR, read `tasks.md`, `plan.md`, `spec.md`, and — if present —
+    `.specify/memory/constitution.md`. Record their absolute paths.
+-2. Invoke the Superpowers `subagent-driven-development` skill to execute the plan
+-   described in `tasks.md`, respecting its phases, dependencies and `[P]`
+-   parallel markers.
+-3. For every task dispatched to a fresh subagent, the subagent's prompt MUST
++2. **Determine this run's scope** from the arguments below (e.g. "next task"
++   = the first unchecked task in `tasks.md` in dependency order; a list of IDs
++   = those tasks; empty = every unchecked task).
++
++   $ARGUMENTS
++
++3. **Brainstorm the scope — once per run, before any dispatch.** Invoke the
++   Superpowers `brainstorming` skill on the in-scope task(s): their exact
++   `tasks.md` text plus the absolute paths of `spec.md`, `plan.md`,
++   `constitution.md` and, if present, `research.md`, `data-model.md`,
++   `contracts/` and `quickstart.md`. Follow the skill's own process (classify
++   spike/bounded/architectural, clarifying questions one at a time, 2-3
++   approaches, design in sections, human approval). Constraints that override
++   brainstorming's defaults:
++   - `spec.md`, `plan.md` and the constitution are already-approved design.
++     Brainstorming decides *how* to implement the in-scope tasks within them;
++     it does not reopen them. If the session surfaces a genuine conflict with
++     them, say so and propose an explicit amendment (e.g. a dated `plan.md`
++     amendment or a Complexity Tracking entry) — never diverge silently.
++   - Whatever path the skill classifies, persist the approved design to
++     `docs/superpowers/specs/YYYY-MM-DD-<task-ids>-<topic>-design.md` and
++     commit it (stage it by path). A bounded task gets a short document; it
++     still gets one, because implementer and reviewer subagents can only read
++     files.
++   - Once the design is approved, brainstorming's normal terminal step —
++     invoking `writing-plans` — is exactly step 4. Do not chain into any other
++     skill.
++   - Do NOT create, modify or delete application source files, tests or
++     `tasks.md` during brainstorming.
++4. **Plan — invoke the Superpowers `writing-plans` skill** on the approved
++   design. Constraints that override its defaults:
++   - Save to `docs/superpowers/plans/YYYY-MM-DD-<task-ids>-<topic>.md`; its
++     `**Spec:**` line names the step-3 design document and `spec.md`; its
++     Global Constraints copy verbatim the binding values from `spec.md`,
++     `plan.md`, `contracts/` and the constitution that the in-scope tasks
++     touch.
++   - Scope is exactly the in-scope `tasks.md` items — no more. A `tasks.md`
++     item may be split into several plan tasks, but every `### Task N:`
++     heading must name the `tasks.md` ID it implements (e.g.
++     `### Task 1: T011 — contract test POST /api/questionnaires`), and every
++     in-scope ID must be covered. Respect `tasks.md` dependency order and
++     `[P]` markers.
++   - Execution method is already supplied: **Subagent-driven**. Still show
++     the human the saved plan and ask "Does it capture what you want?";
++     incorporate corrections, commit the plan (stage it by path), then
++     continue at step 5.
++5. Invoke the Superpowers `subagent-driven-development` skill with the step-4
++   plan file as its PLAN_FILE (so its `task-brief`, `review-package` and
++   per-plan ledger work natively).
++6. For every task dispatched to a fresh subagent, the subagent's prompt MUST
+    explicitly include:
+-   - The task's exact ID, description and file paths as written in `tasks.md`.
++   - The `tasks.md` ID the plan task implements, and that item's exact
++     description and file paths as written in `tasks.md`.
+    - The absolute paths to `spec.md`, `plan.md`, `tasks.md` and
+-     `constitution.md` collected in step 1 (subagents never inherit this
+-     session's context, so nothing reaches them unless it is written into their
+-     prompt).
++     `constitution.md` collected in step 1, **and to the design document
++     approved in step 3 and the plan written in step 4**, which are binding
++     for that task (subagents never
++     inherit this session's context, so nothing reaches them unless it is
++     written into their prompt). The task reviewer gets both paths too and
++     checks compliance against them.
+    - An instruction to read `constitution.md` before proposing any
+      implementation approach.
+    - An instruction to follow the Superpowers `test-driven-development` skill:
+      write a failing test first, watch it fail, then write the minimal code to
+      pass. No production code without a failing test first.
+    - **If the task creates or modifies a graphical user interface** (a page or
+      component file under `frontend/`, e.g. anything the task labels
+      "Frontend:" or touching `frontend/app/`, `frontend/components/`,
+      `frontend/services/*.tsx`), an additional instruction to invoke the
+      `impeccable` skill for the UI/UX/visual work — run its `shape` command
+      (or let its own routing pick `new-work` for a new surface) before
+      writing UI code, and follow its craft-floor quality bar while
+      implementing. This runs alongside TDD, not instead of it: `impeccable`
+      governs visual/UX craft and accessibility; `test-driven-development`
+      still governs the task's testable behavior (component rendering,
+      interactions, API calls). A subagent working a UI task without invoking
+      `impeccable` has not correctly executed the task.
+-4. After each subagent completes, run the task review (spec compliance + code
+-   quality) that `subagent-driven-development` prescribes before marking the
+-   task `[X]` in `tasks.md`.
+-5. Execute continuously without pausing between tasks to ask "should I
+-   continue?". Only stop for: an irreversible or destructive operation, a
+-   security-sensitive action, a side effect outside this worktree (merge, push
+-   to a shared branch, publish), or a plan too broken to proceed — and say why.
+-6. Once every task is complete, run the whole-branch review
+-   `subagent-driven-development` prescribes, then report: tasks completed,
+-   files touched, tests added, and any ruling you made without stopping to ask.
+\ No newline at end of file
++7. After each subagent completes, run the task review (spec compliance + code
++   quality) that `subagent-driven-development` prescribes. Mark a `tasks.md`
++   item `[X]` — with an inline annotation recording the reviewer verdict —
++   only once every plan task that names its ID has passed review.
++8. After the step-4 plan is approved, execute continuously without
++   pausing between tasks to ask "should I continue?". Only stop for: an
++   irreversible or destructive operation, a security-sensitive action, a side
++   effect outside this worktree (merge, push to a shared branch, publish), or
++   a plan too broken to proceed — and say why.
++9. Once every in-scope task is complete, run the whole-branch review
++   `subagent-driven-development` prescribes, then report: the design document
++   and plan paths, tasks completed, files touched, tests added, and any ruling you made
++   without stopping to ask.
+\ No newline at end of file
+diff --git a/.specify/extensions/superpowers-bridge/commands/speckit.superpowers-bridge.tdd-implement.md b/.specify/extensions/superpowers-bridge/commands/speckit.superpowers-bridge.tdd-implement.md
+index 8cc7ab9..756ddf9 100644
+--- a/.specify/extensions/superpowers-bridge/commands/speckit.superpowers-bridge.tdd-implement.md
++++ b/.specify/extensions/superpowers-bridge/commands/speckit.superpowers-bridge.tdd-implement.md
+@@ -1,53 +1,108 @@
+ ---
+-description: "Execute tasks.md via Superpowers subagent-driven-development and test-driven-development instead of Spec Kit's built-in sequential executor"
++description: "Brainstorm the in-scope tasks, plan them with Superpowers writing-plans, then execute the plan via Superpowers subagent-driven-development and test-driven-development instead of Spec Kit's built-in sequential executor"
+ ---
+ 
+ # Superpowers TDD Implementation Bridge
+ 
+ ## Purpose
+ 
+ Replace /speckit.implement's default single-context task loop with Superpowers'
+-stricter workflow: a fresh implementer subagent per task, enforced
+-RED-GREEN-REFACTOR, and a two-stage review after each task.
++full workflow on the tasks this run will execute: an interactive
++`brainstorming` session, a `writing-plans` implementation plan, then
++`subagent-driven-development` on that plan — a fresh implementer subagent per
++plan task, enforced RED-GREEN-REFACTOR, and a two-stage review after each.
+ 
+ ## Behavior
+ 
+ 1. From FEATURE_DIR, read `tasks.md`, `plan.md`, `spec.md`, and — if present —
+    `/memory/constitution.md`. Record their absolute paths.
+-2. Invoke the Superpowers `subagent-driven-development` skill to execute the plan
+-   described in `tasks.md`, respecting its phases, dependencies and `[P]`
+-   parallel markers.
+-3. For every task dispatched to a fresh subagent, the subagent's prompt MUST
++2. **Determine this run's scope** from the arguments below (e.g. "next task"
++   = the first unchecked task in `tasks.md` in dependency order; a list of IDs
++   = those tasks; empty = every unchecked task).
++
++   $ARGUMENTS
++
++3. **Brainstorm the scope — once per run, before any dispatch.** Invoke the
++   Superpowers `brainstorming` skill on the in-scope task(s): their exact
++   `tasks.md` text plus the absolute paths of `spec.md`, `plan.md`,
++   `constitution.md` and, if present, `research.md`, `data-model.md`,
++   `contracts/` and `quickstart.md`. Follow the skill's own process (classify
++   spike/bounded/architectural, clarifying questions one at a time, 2-3
++   approaches, design in sections, human approval). Constraints that override
++   brainstorming's defaults:
++   - `spec.md`, `plan.md` and the constitution are already-approved design.
++     Brainstorming decides *how* to implement the in-scope tasks within them;
++     it does not reopen them. If the session surfaces a genuine conflict with
++     them, say so and propose an explicit amendment (e.g. a dated `plan.md`
++     amendment or a Complexity Tracking entry) — never diverge silently.
++   - Whatever path the skill classifies, persist the approved design to
++     `docs/superpowers/specs/YYYY-MM-DD-<task-ids>-<topic>-design.md` and
++     commit it (stage it by path). A bounded task gets a short document; it
++     still gets one, because implementer and reviewer subagents can only read
++     files.
++   - Once the design is approved, brainstorming's normal terminal step —
++     invoking `writing-plans` — is exactly step 4. Do not chain into any other
++     skill.
++   - Do NOT create, modify or delete application source files, tests or
++     `tasks.md` during brainstorming.
++4. **Plan — invoke the Superpowers `writing-plans` skill** on the approved
++   design. Constraints that override its defaults:
++   - Save to `docs/superpowers/plans/YYYY-MM-DD-<task-ids>-<topic>.md`; its
++     `**Spec:**` line names the step-3 design document and `spec.md`; its
++     Global Constraints copy verbatim the binding values from `spec.md`,
++     `plan.md`, `contracts/` and the constitution that the in-scope tasks
++     touch.
++   - Scope is exactly the in-scope `tasks.md` items — no more. A `tasks.md`
++     item may be split into several plan tasks, but every `### Task N:`
++     heading must name the `tasks.md` ID it implements (e.g.
++     `### Task 1: T011 — contract test POST /api/questionnaires`), and every
++     in-scope ID must be covered. Respect `tasks.md` dependency order and
++     `[P]` markers.
++   - Execution method is already supplied: **Subagent-driven**. Still show
++     the human the saved plan and ask "Does it capture what you want?";
++     incorporate corrections, commit the plan (stage it by path), then
++     continue at step 5.
++5. Invoke the Superpowers `subagent-driven-development` skill with the step-4
++   plan file as its PLAN_FILE (so its `task-brief`, `review-package` and
++   per-plan ledger work natively).
++6. For every task dispatched to a fresh subagent, the subagent's prompt MUST
+    explicitly include:
+-   - The task's exact ID, description and file paths as written in `tasks.md`.
++   - The `tasks.md` ID the plan task implements, and that item's exact
++     description and file paths as written in `tasks.md`.
+    - The absolute paths to `spec.md`, `plan.md`, `tasks.md` and
+-     `constitution.md` collected in step 1 (subagents never inherit this
+-     session's context, so nothing reaches them unless it is written into their
+-     prompt).
++     `constitution.md` collected in step 1, **and to the design document
++     approved in step 3 and the plan written in step 4**, which are binding
++     for that task (subagents never
++     inherit this session's context, so nothing reaches them unless it is
++     written into their prompt). The task reviewer gets both paths too and
++     checks compliance against them.
+    - An instruction to read `constitution.md` before proposing any
+      implementation approach.
+    - An instruction to follow the Superpowers `test-driven-development` skill:
+      write a failing test first, watch it fail, then write the minimal code to
+      pass. No production code without a failing test first.
+    - **If the task creates or modifies a graphical user interface** (a page or
+      component file under `frontend/`, e.g. anything the task labels
+      "Frontend:" or touching `frontend/app/`, `frontend/components/`,
+      `frontend/services/*.tsx`), an additional instruction to invoke the
+      `impeccable` skill for the UI/UX/visual work — run its `shape` command
+      (or let its own routing pick `new-work` for a new surface) before
+      writing UI code, and follow its craft-floor quality bar while
+      implementing. This runs alongside TDD, not instead of it: `impeccable`
+      governs visual/UX craft and accessibility; `test-driven-development`
+      still governs the task's testable behavior (component rendering,
+      interactions, API calls). A subagent working a UI task without invoking
+      `impeccable` has not correctly executed the task.
+-4. After each subagent completes, run the task review (spec compliance + code
+-   quality) that `subagent-driven-development` prescribes before marking the
+-   task `[X]` in `tasks.md`.
+-5. Execute continuously without pausing between tasks to ask "should I
+-   continue?". Only stop for: an irreversible or destructive operation, a
+-   security-sensitive action, a side effect outside this worktree (merge, push
+-   to a shared branch, publish), or a plan too broken to proceed — and say why.
+-6. Once every task is complete, run the whole-branch review
+-   `subagent-driven-development` prescribes, then report: tasks completed,
+-   files touched, tests added, and any ruling you made without stopping to ask.
++7. After each subagent completes, run the task review (spec compliance + code
++   quality) that `subagent-driven-development` prescribes. Mark a `tasks.md`
++   item `[X]` — with an inline annotation recording the reviewer verdict —
++   only once every plan task that names its ID has passed review.
++8. After the step-4 plan is approved, execute continuously without
++   pausing between tasks to ask "should I continue?". Only stop for: an
++   irreversible or destructive operation, a security-sensitive action, a side
++   effect outside this worktree (merge, push to a shared branch, publish), or
++   a plan too broken to proceed — and say why.
++9. Once every in-scope task is complete, run the whole-branch review
++   `subagent-driven-development` prescribes, then report: the design document
++   and plan paths, tasks completed, files touched, tests added, and any ruling you made
++   without stopping to ask.
+diff --git a/.specify/extensions/superpowers-bridge/extension.yml b/.specify/extensions/superpowers-bridge/extension.yml
+index f69eb46..f537701 100644
+--- a/.specify/extensions/superpowers-bridge/extension.yml
++++ b/.specify/extensions/superpowers-bridge/extension.yml
+@@ -1,37 +1,37 @@
+ schema_version: "1.0"
+ 
+ extension:
+   id: superpowers-bridge
+   name: "Superpowers Bridge"
+-  version: "0.2.0"
+-  description: "Delegates spec refinement to Superpowers brainstorming and implementation to Superpowers TDD + subagent-driven-development"
++  version: "0.4.0"
++  description: "Delegates spec refinement to Superpowers brainstorming and implementation to Superpowers brainstorming + writing-plans + TDD + subagent-driven-development"
+   author: "Wissem Hamza"
+   license: MIT
+ 
+ requires:
+   speckit_version: ">=0.2.0"
+ 
+ provides:
+   commands:
+     - name: speckit.superpowers-bridge.brainstorm
+       file: commands/speckit.superpowers-bridge.brainstorm.md
+       description: "Refine the raw feature idea via Superpowers brainstorming before /speckit.specify writes spec.md"
+     - name: speckit.superpowers-bridge.tdd-implement
+       file: commands/speckit.superpowers-bridge.tdd-implement.md
+-      description: "Execute tasks.md via Superpowers subagent-driven-development + test-driven-development"
++      description: "Brainstorm and plan the in-scope tasks, then execute the plan via Superpowers subagent-driven-development + test-driven-development"
+ 
+ hooks:
+   before_specify:
+     command: speckit.superpowers-bridge.brainstorm
+     optional: true
+     prompt: "Lancer le brainstorming Superpowers pour affiner l'idée avant de spécifier ?"
+     description: "Delegates idea refinement to Superpowers brainstorming"
+   before_implement:
+     command: speckit.superpowers-bridge.tdd-implement
+     optional: false
+-    description: "Delegates task execution to Superpowers TDD + subagent-driven-development"
++    description: "Delegates task execution to Superpowers brainstorming + writing-plans (once per run) + TDD + subagent-driven-development"
+ 
+ tags:
+   - "superpowers"
+   - "tdd"
+   - "brainstorming"
+diff --git a/CLAUDE.md b/CLAUDE.md
+index 19ea9dc..ea88193 100644
+--- a/CLAUDE.md
++++ b/CLAUDE.md
+@@ -46,59 +46,72 @@ This repo uses [Spec Kit](https://github.com/github/spec-kit) (`.specify/`, `.cl
+ for spec-driven development, extended with a custom extension,
+ `extensions/superpowers-bridge/` (installed into `.specify/extensions/`), which delegates two
+ steps to the [Superpowers](https://github.com/obra/superpowers-marketplace) plugin:
+ 
+ - **`before_specify`** (optional hook) → `speckit.superpowers-bridge.brainstorm` → Superpowers
+   `brainstorming` skill. Refines a raw feature idea (questions, 2-3 approaches, sectioned
+   design) before `/speckit-specify` writes `spec.md`. Writes its design doc to
+   `docs/superpowers/specs/YYYY-MM-DD-<topic>-design.md` in addition to a condensed brief.
+ - **`before_implement`** (mandatory hook, `optional: false` — see the HARD RULE above, this is
+   not optional in practice either) → `speckit.superpowers-bridge.tdd-implement`
+-  → Superpowers `subagent-driven-development` + `test-driven-development`. Executes `tasks.md`
+-  with a fresh implementer subagent per task, strict RED-GREEN-REFACTOR, and a task-scoped
++  → Superpowers `brainstorming` → `writing-plans` → `subagent-driven-development` +
++  `test-driven-development` (bridge v0.4.0). Once per `/speckit-implement` run, before any
++  dispatch: (1) brainstorms the in-scope task(s) interactively with the human (within the
++  already-approved spec/plan — it proposes amendments rather than reopening them) and commits the
++  approved design to `docs/superpowers/specs/YYYY-MM-DD-<task-ids>-<topic>-design.md`;
++  (2) runs `writing-plans` on it, scoped to exactly those `tasks.md` items, each `### Task N:`
++  heading naming the `tasks.md` ID it implements, saved to
++  `docs/superpowers/plans/YYYY-MM-DD-<task-ids>-<topic>.md` and shown to the human for approval;
++  (3) executes that plan with a fresh implementer subagent per plan task (design doc + plan paths
++  passed to implementer and reviewer), strict RED-GREEN-REFACTOR, and a task-scoped
+   reviewer subagent before a task is marked `[X]`. For a task marked **`[UI]`** in `tasks.md`
+   (creates/modifies a page or component under `frontend/`), the dispatched subagent must
+   *also* invoke the `impeccable` skill (`.agents/skills/impeccable/`) for the visual/UX/
+   accessibility work, alongside — not instead of — TDD: `impeccable` governs craft quality,
+   `test-driven-development` still governs testable behavior.
+ 
+ Do not run `/speckit-implement` expecting it to write code in the current context — it hands
+ off to the hook above, which dispatches subagents. Subagents never inherit this session's
+ context: any dispatch must explicitly pass the task's brief plus absolute paths to `spec.md`,
+ `plan.md`, `tasks.md`, and `.specify/memory/constitution.md`.
+ 
+ The canonical command order for this feature (already run once; re-run only to amend):
+ `/speckit-constitution` → `/speckit-specify` → `/speckit-plan` → `/speckit-tasks` → `/speckit-implement`.
+ 
+ **Known friction**: Superpowers' `subagent-driven-development` helper scripts
+-(`scripts/task-brief`) expect Superpowers' own plan format (`## Task N` headings), not Spec
+-Kit's `tasks.md` checklist format (`- [ ] T001 ...`). Write task briefs by hand when dispatching
+-implementer subagents; `scripts/review-package` (diff-based) works unmodified. The
+-`subagent-driven-development` workspace (`.superpowers/sdd/`) self-regenerates a `.gitignore`
+-excluding itself on every run.
++(`scripts/task-brief`) expect Superpowers' own plan format (`### Task N` headings), not Spec
++Kit's `tasks.md` checklist format (`- [ ] T001 ...`). Since bridge v0.4.0 this is resolved by
++running SDD on the `writing-plans` plan (not on `tasks.md`), so `task-brief`/`review-package`
++work natively. Runs before v0.4.0 (T001–T010) used hand-written briefs in
++`.superpowers/sdd/tasks/`. The `subagent-driven-development` workspace (`.superpowers/sdd/`)
++self-regenerates a `.gitignore` excluding itself on every run.
+ 
+ ## Current state
+ 
+-**T001–T009** of 59 tasks in `specs/001-questionnaire-platform/tasks.md` are done (each with a
++**T001–T010** of 59 tasks in `specs/001-questionnaire-platform/tasks.md` are done (each with a
+ recorded reviewer-subagent verdict). What exists today:
+ 
+ - `backend/` — Strapi 5 TypeScript project (`create-strapi-app@5.54.0`, T002). SQLite by default
+   for local dev, PostgreSQL via `DATABASE_CLIENT=postgres` with the `pg` driver installed (T006).
+   User content-type extended with a business `role` enum (T007). `GET /health` → 200
+   `{"status":"ok"}` / 503 `{"status":"degraded","reason":...}`, registered at the bare `/health`
+   path via `strapi.server.routes()` in `src/index.ts` as well as `/api/health` (T008).
+   Structured JSON logs on stdout via `config/logger.ts`, level from `LOG_LEVEL` (default `http`)
+   (T009); Strapi's startup banner is still plain `console.log`, not JSON.
+ - `frontend/` — Next.js App Router + TypeScript project (`create-next-app`, T003); `npm run build`
+   works. No application pages yet.
+ - Tooling — ESLint + Prettier in both projects (`npm run lint`, `npm run format:check`, T004);
+   root `.env.example` documents DB/JWT/SMTP/API-URL variables (T005).
++- `docker-compose.yml` — local dev stack (T010): `db` (postgres:16, port 5432), `backend`
++  (node:20 + bind mount, `npm run develop`, :1337, healthcheck on `/health`), `frontend` (node:20,
++  `npm run dev`, :3000). No Dockerfiles yet (T055). `cp .env.example .env && docker compose up -d`.
++  Caveat: the bind mount leaves root-owned `backend/types/generated/` files on the host.
+ - Tests — so far only shell scripts under `tests/structure/*.sh` (run each one; all should pass).
+   No Jest/contract/integration test harness exists yet (starts with T011+).
+ 
+ **Open risk carried forward from T007** (see its `tasks.md` annotation): the custom `role` enum
+ overwrites Strapi's built-in `users-permissions` `role` relation, which breaks authenticated
+ permission resolution. Resolve it (rename the field, or amend `data-model.md` + `plan.md`
+ Complexity Tracking) before any login/auth/permission-gated task.
+ 
+ ## Source of truth for requirements and design
+ 
+diff --git a/docker-compose.yml b/docker-compose.yml
+new file mode 100644
+index 0000000..22a1777
+--- /dev/null
++++ b/docker-compose.yml
+@@ -0,0 +1,109 @@
++# docker-compose.yml — local development stack (T010, Principe III — IaC et
++# Reproductibilité).
++#
++# Wires db (PostgreSQL) + backend (Strapi) + frontend (Next.js) for local
++# development, per plan.md Constraints and research.md's V1 deployment note:
++# this file is not the V1 production deployment (Vercel + Strapi Cloud, see
++# research.md § Déploiement V1) but "reste utilisé pour le développement
++# local et deviendra la base du déploiement auto-hébergé à partir de
++# S5-S7". No Dockerfile here on purpose — Dockerfiles are T055; backend/
++# and frontend/ run on the official node:20 image with their source
++# bind-mounted and node_modules kept in a named volume so a Linux container
++# install never pollutes the host checkout (e.g. native modules like
++# better-sqlite3/node-gyp builds).
++#
++# Secrets (Principe IV): every credential below is `${VAR}` interpolation
++# from the environment (see .env.example at the repo root — `cp .env.example
++# .env` before `docker compose up`), never a literal. The one exception is
++# DATABASE_URL, deliberately set to an empty string on the backend service:
++# backend/config/database.ts gives DATABASE_URL precedence over
++# DATABASE_HOST/PORT/... when it parses truthy, but .env.example ships a
++# non-empty placeholder DATABASE_URL (documenting the var for the V1/managed
++# deployment); an empty string is falsy, so pg's ConnectionParameters skips
++# parsing it and DATABASE_HOST=db wins (verified against the installed `pg`
++# driver's lib/connection-parameters.js).
++
++services:
++  db:
++    image: postgres:16
++    restart: unless-stopped
++    environment:
++      POSTGRES_USER: ${DATABASE_USERNAME}
++      POSTGRES_PASSWORD: ${DATABASE_PASSWORD}
++      POSTGRES_DB: ${DATABASE_NAME}
++    volumes:
++      - db-data:/var/lib/postgresql/data
++    ports:
++      # Published so the quickstart's natively-run backend
++      # (`docker compose up -d db` then `npm run develop`) can reach it.
++      - "5432:5432"
++    healthcheck:
++      test: ["CMD-SHELL", "pg_isready -U ${DATABASE_USERNAME} -d ${DATABASE_NAME}"]
++      interval: 5s
++      timeout: 5s
++      retries: 10
++
++  backend:
++    image: node:20
++    working_dir: /app
++    command: sh -c "npm ci && npm run develop"
++    volumes:
++      - ./backend:/app
++      - backend-node-modules:/app/node_modules
++    ports:
++      - "1337:1337"
++    environment:
++      DATABASE_CLIENT: postgres
++      # Neutralised on purpose — see the file header note above.
++      DATABASE_URL: ""
++      DATABASE_HOST: db
++      DATABASE_PORT: 5432
++      DATABASE_NAME: ${DATABASE_NAME}
++      DATABASE_USERNAME: ${DATABASE_USERNAME}
++      DATABASE_PASSWORD: ${DATABASE_PASSWORD}
++      DATABASE_SSL: "false"
++      APP_KEYS: ${APP_KEYS}
++      ADMIN_JWT_SECRET: ${ADMIN_JWT_SECRET}
++      API_TOKEN_SALT: ${API_TOKEN_SALT}
++      TRANSFER_TOKEN_SALT: ${TRANSFER_TOKEN_SALT}
++      JWT_SECRET: ${JWT_SECRET}
++      ENCRYPTION_KEY: ${ENCRYPTION_KEY}
++      LOG_LEVEL: ${LOG_LEVEL}
++    depends_on:
++      db:
++        condition: service_healthy
++    healthcheck:
++      # curl/wget are not guaranteed in the node:20 image; node itself is.
++      test:
++        [
++          "CMD",
++          "node",
++          "-e",
++          "require('http').get('http://localhost:1337/health', (res) => { process.exit(res.statusCode === 200 ? 0 : 1); }).on('error', () => process.exit(1));",
++        ]
++      interval: 10s
++      timeout: 5s
++      retries: 30
++      start_period: 60s
++
++  frontend:
++    image: node:20
++    working_dir: /app
++    command: sh -c "npm ci && npm run dev -- -H 0.0.0.0"
++    volumes:
++      - ./frontend:/app
++      - frontend-node-modules:/app/node_modules
++    ports:
++      - "3000:3000"
++    environment:
++      # The value the *browser* must reach, not the Docker-network name —
++      # deliberately literal (not from .env.example, whose
++      # NEXT_PUBLIC_API_BASE_URL documents the V1/production backend URL).
++      NEXT_PUBLIC_API_BASE_URL: http://localhost:1337
++    depends_on:
++      - backend
++
++volumes:
++  db-data:
++  backend-node-modules:
++  frontend-node-modules:
+diff --git a/extensions/superpowers-bridge/commands/speckit.superpowers-bridge.tdd-implement.md b/extensions/superpowers-bridge/commands/speckit.superpowers-bridge.tdd-implement.md
+index 8cc7ab9..756ddf9 100644
+--- a/extensions/superpowers-bridge/commands/speckit.superpowers-bridge.tdd-implement.md
++++ b/extensions/superpowers-bridge/commands/speckit.superpowers-bridge.tdd-implement.md
+@@ -1,53 +1,108 @@
+ ---
+-description: "Execute tasks.md via Superpowers subagent-driven-development and test-driven-development instead of Spec Kit's built-in sequential executor"
++description: "Brainstorm the in-scope tasks, plan them with Superpowers writing-plans, then execute the plan via Superpowers subagent-driven-development and test-driven-development instead of Spec Kit's built-in sequential executor"
+ ---
+ 
+ # Superpowers TDD Implementation Bridge
+ 
+ ## Purpose
+ 
+ Replace /speckit.implement's default single-context task loop with Superpowers'
+-stricter workflow: a fresh implementer subagent per task, enforced
+-RED-GREEN-REFACTOR, and a two-stage review after each task.
++full workflow on the tasks this run will execute: an interactive
++`brainstorming` session, a `writing-plans` implementation plan, then
++`subagent-driven-development` on that plan — a fresh implementer subagent per
++plan task, enforced RED-GREEN-REFACTOR, and a two-stage review after each.
+ 
+ ## Behavior
+ 
+ 1. From FEATURE_DIR, read `tasks.md`, `plan.md`, `spec.md`, and — if present —
+    `/memory/constitution.md`. Record their absolute paths.
+-2. Invoke the Superpowers `subagent-driven-development` skill to execute the plan
+-   described in `tasks.md`, respecting its phases, dependencies and `[P]`
+-   parallel markers.
+-3. For every task dispatched to a fresh subagent, the subagent's prompt MUST
++2. **Determine this run's scope** from the arguments below (e.g. "next task"
++   = the first unchecked task in `tasks.md` in dependency order; a list of IDs
++   = those tasks; empty = every unchecked task).
++
++   $ARGUMENTS
++
++3. **Brainstorm the scope — once per run, before any dispatch.** Invoke the
++   Superpowers `brainstorming` skill on the in-scope task(s): their exact
++   `tasks.md` text plus the absolute paths of `spec.md`, `plan.md`,
++   `constitution.md` and, if present, `research.md`, `data-model.md`,
++   `contracts/` and `quickstart.md`. Follow the skill's own process (classify
++   spike/bounded/architectural, clarifying questions one at a time, 2-3
++   approaches, design in sections, human approval). Constraints that override
++   brainstorming's defaults:
++   - `spec.md`, `plan.md` and the constitution are already-approved design.
++     Brainstorming decides *how* to implement the in-scope tasks within them;
++     it does not reopen them. If the session surfaces a genuine conflict with
++     them, say so and propose an explicit amendment (e.g. a dated `plan.md`
++     amendment or a Complexity Tracking entry) — never diverge silently.
++   - Whatever path the skill classifies, persist the approved design to
++     `docs/superpowers/specs/YYYY-MM-DD-<task-ids>-<topic>-design.md` and
++     commit it (stage it by path). A bounded task gets a short document; it
++     still gets one, because implementer and reviewer subagents can only read
++     files.
++   - Once the design is approved, brainstorming's normal terminal step —
++     invoking `writing-plans` — is exactly step 4. Do not chain into any other
++     skill.
++   - Do NOT create, modify or delete application source files, tests or
++     `tasks.md` during brainstorming.
++4. **Plan — invoke the Superpowers `writing-plans` skill** on the approved
++   design. Constraints that override its defaults:
++   - Save to `docs/superpowers/plans/YYYY-MM-DD-<task-ids>-<topic>.md`; its
++     `**Spec:**` line names the step-3 design document and `spec.md`; its
++     Global Constraints copy verbatim the binding values from `spec.md`,
++     `plan.md`, `contracts/` and the constitution that the in-scope tasks
++     touch.
++   - Scope is exactly the in-scope `tasks.md` items — no more. A `tasks.md`
++     item may be split into several plan tasks, but every `### Task N:`
++     heading must name the `tasks.md` ID it implements (e.g.
++     `### Task 1: T011 — contract test POST /api/questionnaires`), and every
++     in-scope ID must be covered. Respect `tasks.md` dependency order and
++     `[P]` markers.
++   - Execution method is already supplied: **Subagent-driven**. Still show
++     the human the saved plan and ask "Does it capture what you want?";
++     incorporate corrections, commit the plan (stage it by path), then
++     continue at step 5.
++5. Invoke the Superpowers `subagent-driven-development` skill with the step-4
++   plan file as its PLAN_FILE (so its `task-brief`, `review-package` and
++   per-plan ledger work natively).
++6. For every task dispatched to a fresh subagent, the subagent's prompt MUST
+    explicitly include:
+-   - The task's exact ID, description and file paths as written in `tasks.md`.
++   - The `tasks.md` ID the plan task implements, and that item's exact
++     description and file paths as written in `tasks.md`.
+    - The absolute paths to `spec.md`, `plan.md`, `tasks.md` and
+-     `constitution.md` collected in step 1 (subagents never inherit this
+-     session's context, so nothing reaches them unless it is written into their
+-     prompt).
++     `constitution.md` collected in step 1, **and to the design document
++     approved in step 3 and the plan written in step 4**, which are binding
++     for that task (subagents never
++     inherit this session's context, so nothing reaches them unless it is
++     written into their prompt). The task reviewer gets both paths too and
++     checks compliance against them.
+    - An instruction to read `constitution.md` before proposing any
+      implementation approach.
+    - An instruction to follow the Superpowers `test-driven-development` skill:
+      write a failing test first, watch it fail, then write the minimal code to
+      pass. No production code without a failing test first.
+    - **If the task creates or modifies a graphical user interface** (a page or
+      component file under `frontend/`, e.g. anything the task labels
+      "Frontend:" or touching `frontend/app/`, `frontend/components/`,
+      `frontend/services/*.tsx`), an additional instruction to invoke the
+      `impeccable` skill for the UI/UX/visual work — run its `shape` command
+      (or let its own routing pick `new-work` for a new surface) before
+      writing UI code, and follow its craft-floor quality bar while
+      implementing. This runs alongside TDD, not instead of it: `impeccable`
+      governs visual/UX craft and accessibility; `test-driven-development`
+      still governs the task's testable behavior (component rendering,
+      interactions, API calls). A subagent working a UI task without invoking
+      `impeccable` has not correctly executed the task.
+-4. After each subagent completes, run the task review (spec compliance + code
+-   quality) that `subagent-driven-development` prescribes before marking the
+-   task `[X]` in `tasks.md`.
+-5. Execute continuously without pausing between tasks to ask "should I
+-   continue?". Only stop for: an irreversible or destructive operation, a
+-   security-sensitive action, a side effect outside this worktree (merge, push
+-   to a shared branch, publish), or a plan too broken to proceed — and say why.
+-6. Once every task is complete, run the whole-branch review
+-   `subagent-driven-development` prescribes, then report: tasks completed,
+-   files touched, tests added, and any ruling you made without stopping to ask.
++7. After each subagent completes, run the task review (spec compliance + code
++   quality) that `subagent-driven-development` prescribes. Mark a `tasks.md`
++   item `[X]` — with an inline annotation recording the reviewer verdict —
++   only once every plan task that names its ID has passed review.
++8. After the step-4 plan is approved, execute continuously without
++   pausing between tasks to ask "should I continue?". Only stop for: an
++   irreversible or destructive operation, a security-sensitive action, a side
++   effect outside this worktree (merge, push to a shared branch, publish), or
++   a plan too broken to proceed — and say why.
++9. Once every in-scope task is complete, run the whole-branch review
++   `subagent-driven-development` prescribes, then report: the design document
++   and plan paths, tasks completed, files touched, tests added, and any ruling you made
++   without stopping to ask.
+diff --git a/extensions/superpowers-bridge/extension.yml b/extensions/superpowers-bridge/extension.yml
+index f69eb46..f537701 100644
+--- a/extensions/superpowers-bridge/extension.yml
++++ b/extensions/superpowers-bridge/extension.yml
+@@ -1,37 +1,37 @@
+ schema_version: "1.0"
+ 
+ extension:
+   id: superpowers-bridge
+   name: "Superpowers Bridge"
+-  version: "0.2.0"
+-  description: "Delegates spec refinement to Superpowers brainstorming and implementation to Superpowers TDD + subagent-driven-development"
++  version: "0.4.0"
++  description: "Delegates spec refinement to Superpowers brainstorming and implementation to Superpowers brainstorming + writing-plans + TDD + subagent-driven-development"
+   author: "Wissem Hamza"
+   license: MIT
+ 
+ requires:
+   speckit_version: ">=0.2.0"
+ 
+ provides:
+   commands:
+     - name: speckit.superpowers-bridge.brainstorm
+       file: commands/speckit.superpowers-bridge.brainstorm.md
+       description: "Refine the raw feature idea via Superpowers brainstorming before /speckit.specify writes spec.md"
+     - name: speckit.superpowers-bridge.tdd-implement
+       file: commands/speckit.superpowers-bridge.tdd-implement.md
+-      description: "Execute tasks.md via Superpowers subagent-driven-development + test-driven-development"
++      description: "Brainstorm and plan the in-scope tasks, then execute the plan via Superpowers subagent-driven-development + test-driven-development"
+ 
+ hooks:
+   before_specify:
+     command: speckit.superpowers-bridge.brainstorm
+     optional: true
+     prompt: "Lancer le brainstorming Superpowers pour affiner l'idée avant de spécifier ?"
+     description: "Delegates idea refinement to Superpowers brainstorming"
+   before_implement:
+     command: speckit.superpowers-bridge.tdd-implement
+     optional: false
+-    description: "Delegates task execution to Superpowers TDD + subagent-driven-development"
++    description: "Delegates task execution to Superpowers brainstorming + writing-plans (once per run) + TDD + subagent-driven-development"
+ 
+ tags:
+   - "superpowers"
+   - "tdd"
+   - "brainstorming"
+diff --git a/specs/001-questionnaire-platform/tasks.md b/specs/001-questionnaire-platform/tasks.md
+index 1d95d92..cbbd854 100644
+--- a/specs/001-questionnaire-platform/tasks.md
++++ b/specs/001-questionnaire-platform/tasks.md
+@@ -40,21 +40,21 @@ of each story.
+ ---
+ 
+ ## Phase 2: Foundational (Blocking Prerequisites)
+ 
+ **⚠️ CRITICAL**: Aucune user story ne peut démarrer avant la fin de cette phase.
+ 
+ - [X] T006 Configure PostgreSQL connection in `backend/config/database.ts` per research.md (Storage: PostgreSQL en CI/production, SQLite en dev) *(implementer subagent found `backend/config/database.ts`, already scaffolded in T002, correctly implements the multi-client decision — `DATABASE_CLIENT` defaults to `sqlite`, postgres branch reads `DATABASE_URL`/host-port-etc/`DATABASE_SSL`/`DATABASE_SCHEMA`/pool vars, `DATABASE_URL` correctly takes precedence via `pg`'s own connection-string merge — so left it untouched; found and fixed the real gap instead: the `pg` npm driver was never installed, so `DATABASE_CLIENT=postgres` would crash at runtime with "Cannot find module 'pg'" despite the config code being correct, fixed via `"pg": "^8.16.3"` in `backend/package.json` + `npm install`; also documented `DATABASE_CLIENT`/`DATABASE_FILENAME` in `backend/.env.example` for local `strapi develop` DX; RED confirmed via new `tests/structure/test_database_config.sh` (15/18 passing pre-fix, failing exactly on the pg-dependency and env-example assertions), GREEN (18/18) after; all pre-existing `tests/structure/*.sh` regressions and `npm run build` still pass; task-scoped reviewer subagent independently re-read `database.ts`, verified the `pg` connection-string precedence claim directly against `pg`'s installed source, independently reproduced RED by reverting the two changed files and re-running the test (15/18, same 3 failures) then restored GREEN (18/18), reran the full regression suite and `npm run build` from scratch, and confirmed scope discipline (only `backend/package.json`, `backend/package-lock.json`, `backend/.env.example`, `tests/structure/test_database_config.sh` touched) — verdict PASS, no blocking or non-blocking issues)*
+ - [X] T007 [P] Extend the Strapi `users-permissions` User content-type with `role` (enum: auteur, répondant, administrateur) in `backend/src/extensions/users-permissions/content-types/user/schema.json` per data-model.md Utilisateur *(implementer subagent added `backend/src/extensions/users-permissions/content-types/user/schema.json` with `role: enumeration, required, enum: [auteur, repondant, administrateur]` (ASCII-normalized from `répondant` per Strapi enum conventions); since Strapi 5's plugin content-type extension merge (`@strapi/core` `applyUserExtension`) shallow-spreads top-level schema keys, `attributes` is replaced wholesale rather than deep-merged per field, so the extension file also copies the 8 base `users-permissions` User attributes (username, email, provider, password, resetPasswordToken, confirmationToken, confirmed, blocked) verbatim to avoid deleting them — verified empirically by booting compiled Strapi against a disposable SQLite DB and inspecting the effective merged schema; RED confirmed via new `tests/structure/test_user_role.sh` (0/9 passing pre-implementation), GREEN (9/9) after; full `tests/structure/*.sh` regression suite (93/93 across all 7 scripts) and `npm run build` still pass; task-scoped reviewer subagent independently reproduced RED by moving the schema.json aside and re-running the test (0/9, same failures) then restored GREEN (9/9), independently verified the shallow-merge claim and the byte-for-byte correctness of the copied base attributes against `@strapi/core`/`@strapi/plugin-users-permissions` source, reran the full regression suite and `npm run build` from scratch, and confirmed scope discipline (only the schema.json and `tests/structure/test_user_role.sh` touched, `tasks.md` untouched) — verdict PASS, no Critical/blocking or Minor findings. **Flagged risk carried forward, not a T007 defect**: Strapi's built-in `users-permissions` User schema already uses the attribute name `role` for its native RBAC relation to `plugin::users-permissions.role`, populated by the auth strategy (`populate(['role'])`) and consumed as `user.role.id` in `findRolePermissions` on every authenticated request; overwriting it with the FR-016 business-role enum (both `tasks.md` and `data-model.md` specify the field name `role` verbatim, so renaming here would have been an undocumented scope deviation) means `user.role.id` becomes `undefined` and authenticated-permission resolution silently breaks. This must be reconciled — rename (e.g. `rolePlateforme`) or an explicit `data-model.md` amendment with a `plan.md` Complexity Tracking justification — before any future login/auth/permission-gated task (not T008 health-route or T009 logger) is implemented.)*
+ - [X] T008 [P] Implement `GET /health` route + controller in `backend/src/api/health/routes/health.ts` and `backend/src/api/health/controllers/health.ts` returning `{"status":"ok"}` (200) or `{"status":"degraded","reason":<cause>}` (503) per contracts/api.md *(implementer subagent added `backend/src/api/health/controllers/health.ts` (try/catch around `strapi.db.connection.raw('SELECT 1')`, 200 `{"status":"ok"}` on success, 503 `{"status":"degraded","reason":<error.message>}` on failure) and `backend/src/api/health/routes/health.ts` (public, `auth: false`); discovered via source-reading (`@strapi/core` loaders/server services) that Strapi 5's content-API router unconditionally applies an `/api` prefix to anything loaded from `src/api/*/routes`, with no per-route opt-out, so the contract's literal bare `/health` path required also registering the same handler on the raw top-level router via `strapi.server.routes([...])` in `backend/src/index.ts`'s `register({ strapi })` lifecycle — an in-scope necessity, not a deviation. RED confirmed via new `tests/structure/test_health_route.sh` (0/14 passing pre-implementation), GREEN (14/14) after; full `tests/structure/*.sh` regression suite (107/107 across 8 scripts) and `npm run build`/`npm run lint` (clean, 1 pre-existing out-of-scope T004 warning only) still pass. Live-verified end-to-end against a compiled build: `GET /health` → 200 `{"status":"ok"}` at the bare path (not just `/api/health`), no auth required; 503 path verified twice — once via a temporary forced-failure hook removed before commit, and independently by the reviewer stopping a real local PostgreSQL instance mid-run (`GET /health` → 503 `{"status":"degraded","reason":"connect ECONNREFUSED ..."}`, safe `.message`-only reason, no stack trace/credentials leaked). Task-scoped reviewer subagent independently re-derived the `/api`-prefix claim by reading `@strapi/core`'s `register-routes.js`/`content-api.js`/`server/index.js` source directly (confirmed accurate, `index.ts` change genuinely necessary and correctly scoped), independently reproduced RED (0/14) → GREEN (14/14), reran the full regression suite (107/107) and build/lint from scratch, and ran its own live Postgres-down 503 test — verdict PASS, no Critical findings. One **Important, non-blocking** finding carried forward: `test_health_route.sh` is purely static/grep-based and never boots the app or inspects `index.ts`, so it would not catch a future regression that silently broke the bare `/health` path (e.g. reverting the `strapi.server.routes()` registration) while leaving `/api/health` working — worth addressing whenever this repo adds a live-boot smoke-test tier, not a T008 defect since live behavior was independently verified correct today.)*
+ - [X] T009 [P] Configure structured JSON logging on stdout in `backend/config/logger.ts` (Principe V — Observabilité) *(implementer subagent added `backend/config/logger.ts` (winston via `@strapi/logger`'s re-export: `errors({stack:true})` + ISO-8601 `timestamp` + `json()` format, single `Console` transport, level `env('LOG_LEVEL','http')`), declared `@strapi/logger@5.54.0` as a direct dependency (pinned like the other `@strapi/*` packages, no new logging library, `npm ls` shows a single deduped copy with `winston@3.10.0`), and documented `LOG_LEVEL` in both `.env.example` and `backend/.env.example`; config shape verified against installed source (`@strapi/core` `Strapi.js` builds `createLogger({ level:'http', ...config.get('logger'), ...config.get('server.logger.config') })`, `@strapi/logger` merges via `Object.assign`); default level `http` rather than `info` is a deliberate ruling — it is Strapi's own default and keeps `strapi::logger` per-request access logs, overridable via `LOG_LEVEL`; timestamp is always rewritten as an ISO string because `@strapi/database`'s migration logger passes `timestamp: Date.now()`, which would otherwise mix number/string types in one field (caught in a second RED→GREEN cycle). RED confirmed via new behavioural (not grep-based) `tests/structure/test_json_logger.sh`, which transpiles the real `logger.ts`, builds a logger through `@strapi/logger.createLogger` in a child process and parses actual stdout (1/17 passing pre-implementation; the only pass was the vacuous no-ANSI check), GREEN (18/18) after; full `tests/structure/*.sh` regression suite (125/125 across 9 scripts), `npm run build`, `npm run lint` (1 pre-existing out-of-scope T004 warning only) and `npm run format:check` pass. Live boot (`strapi start`, disposable SQLite) emitted only JSON lines from the logger, `GET /health` → 200. Task-scoped reviewer subagent independently reproduced RED (1/18, rc=1, with `logger.ts` moved aside and both `.env.example` files reverted) → GREEN (18/18), re-verified the config-merge and migration-timestamp claims against `node_modules` source, reran the full regression suite and build/lint/format, and ran its own live boot (37/37 logger lines parse as JSON, including `http` request logs; stderr empty) — verdict PASS, no Critical findings. **Carried forward, not T009 defects**: (1) *Important* — at `http` level `strapi::logger` logs `ctx.url` including the query string, and `contracts/api.md` carries the signed invitation token (FR-017) in the query string, so tokens would reach stdout logs (Principe IV) — the invitation/access-token tasks must log `ctx.path` only or move the token out of the URL; (2) Strapi's startup banner (`@strapi/core` `startup-logger.js`) uses plain `console.log` and is not JSON — address in T010/T055 if strict JSON-only stdout is required; (3) `backend/config/database.ts` joins `DATABASE_FILENAME` onto `__dirname` so absolute paths get nested under `backend/` — relevant to T010 volume paths; (4) Minor: `test_json_logger.sh` leaves `${TMPDIR:-/tmp}/t009_stderr` behind (should use `mktemp` + `trap`), its no-ANSI check passes vacuously on empty output, and `npm run format:check` fails when the gitignored `backend/.strapi-updater.json` exists because `.prettierignore` (T004) doesn't exclude it.)*
+-- [ ] T010 Create `docker-compose.yml` at repository root wiring `db` (PostgreSQL), `backend`, `frontend` services per plan.md Constraints (Principe III — IaC)
++- [X] T010 Create `docker-compose.yml` at repository root wiring `db` (PostgreSQL), `backend`, `frontend` services per plan.md Constraints (Principe III — IaC) *(first task run through the installed Superpowers plugin (`subagent-driven-development` v6.4.1) via the superpowers-bridge `before_implement` hook; ledger `.superpowers/sdd/tasks/progress.md`. Controller rulings recorded before dispatch: (1) Dockerfiles are T055's scope, so `backend`/`frontend` run the official `node:20` image (Node 20 LTS per plan.md) with the source bind-mounted and `npm ci && npm run develop|dev`, container `node_modules` isolated in named volumes — T055 later swaps `image:`+`command:` for `build:`; (2) the backend service sets `DATABASE_URL` empty so `DATABASE_HOST=db` wins over the placeholder URL in the root `.env.example`. Implementer subagent (commit `c59f382`) added `docker-compose.yml` — `db` (`postgres:16`, named volume, 5432 published for quickstart's native backend, `pg_isready` healthcheck), `backend` (`DATABASE_CLIENT=postgres`, depends on `db` `service_healthy`, healthcheck on bare `GET /health`, 1337), `frontend` (depends on `backend`, 3000, `NEXT_PUBLIC_API_BASE_URL=http://localhost:1337`); every credential is a `${VAR}` reference to variables already documented in `.env.example` (Principe IV). RED confirmed via new behavioural `tests/structure/test_docker_compose.sh` (asserts on the parsed `docker compose config --format json` model with python3, not on YAML text; failing with the file absent), GREEN 30/30; full `tests/structure/*.sh` suite 155/155 (re-run by the controller with Node on PATH). Live-verified: `docker compose up -d` → db and backend healthy, `GET /health` → 200 `{"status":"ok"}` through Postgres, backend logger lines JSON (T009), frontend 200 on :3000, host `backend/node_modules` untouched, `docker compose down -v` clean. Task-scoped reviewer subagent independently re-verified the `DATABASE_URL` neutralisation against `@strapi/utils` `env-helper.js` and `pg` `connection-parameters.js` source and every `${VAR}` against `.env.example` — verdict Spec ✅ / quality Approved, no Critical or Important findings. **Deferred minors**: `DATABASE_PORT: 5432` is the only non-interpolated DB var (container-internal port); `restart: unless-stopped` on `db` was not requested; and the container bind mount leaves root-owned, un-gitignored `backend/types/generated/` files on the host after `docker compose up` — needs a follow-up (gitignore + non-root container user or volume).)*
+ 
+ **Checkpoint**: Fondations prêtes — les user stories peuvent démarrer (en parallèle si staffé).
+ 
+ ---
+ 
+ ## Phase 3: User Story 1 - Créer et publier un questionnaire (Priority: P1) 🎯 MVP
+ 
+ **Goal**: Un auteur crée un questionnaire, y ajoute des questions typées, définit sa visibilité,
+ et le publie.
+ 
+diff --git a/tests/structure/test_docker_compose.sh b/tests/structure/test_docker_compose.sh
+new file mode 100755
+index 0000000..7d3c15a
+--- /dev/null
++++ b/tests/structure/test_docker_compose.sh
+@@ -0,0 +1,248 @@
++#!/bin/bash
++
++# Test script to verify docker-compose.yml per T010
++# (plan.md Constraints, Principe III — Infrastructure as Code et
++# Reproductibilité; research.md § Déploiement V1: "docker-compose.yml (T010)
++# reste utilisé pour le développement local"; quickstart.md "Démarrage
++# local"/"Nettoyage": `docker compose up -d db` / `docker compose down -v`
++# must keep working)
++#
++# Behavioural, not grep-only: builds a throwaway .env from the real
++# .env.example, asks Docker Compose itself to resolve docker-compose.yml
++# (`docker compose config --format json`), and asserts on the *parsed
++# model* Compose actually produces (services, images, healthchecks,
++# depends_on conditions, ports, env var wiring) via python3. Also checks
++# the raw YAML for secret literals (Principe IV).
++
++set -e
++
++test_count=0
++pass_count=0
++fail_count=0
++
++pass() {
++    test_count=$((test_count + 1))
++    pass_count=$((pass_count + 1))
++    echo "✓ PASS: $1"
++}
++
++fail() {
++    test_count=$((test_count + 1))
++    fail_count=$((fail_count + 1))
++    echo "✗ FAIL: $1"
++    if [ -n "$2" ]; then
++        echo "  $2"
++    fi
++}
++
++assert_file_exists() {
++    if [ -f "$1" ]; then pass "$2"; else fail "$2" "Expected file: $1"; fi
++}
++
++cd "$(git rev-parse --show-toplevel)"
++
++COMPOSE_FILE="docker-compose.yml"
++
++echo "=== Testing docker-compose.yml (T010) ==="
++echo ""
++
++echo "--- Prerequisites ---"
++if command -v docker >/dev/null 2>&1 && docker compose version >/dev/null 2>&1; then
++    pass "Docker Compose (v2 plugin) is installed"
++else
++    fail "Docker Compose (v2 plugin) is installed" "'docker compose version' failed"
++    echo ""
++    echo "=== Test Results ==="
++    echo "Total: $test_count | Passed: $pass_count | Failed: $fail_count"
++    echo "✗ Cannot continue without Docker Compose"
++    exit 1
++fi
++
++assert_file_exists "$COMPOSE_FILE" "$COMPOSE_FILE exists at repository root"
++assert_file_exists ".env.example" ".env.example exists (used to build a throwaway env for config resolution)"
++
++if [ ! -f "$COMPOSE_FILE" ] || [ ! -f ".env.example" ]; then
++    echo ""
++    echo "=== Test Results ==="
++    echo "Total: $test_count | Passed: $pass_count | Failed: $fail_count"
++    echo "✗ Cannot continue without $COMPOSE_FILE and .env.example"
++    exit 1
++fi
++
++# --- Resolve the compose model the way Docker itself would, from a
++#     throwaway env file built from .env.example (never the real .env). ---
++TMP_ENV=$(mktemp)
++TMP_JSON=$(mktemp)
++TMP_ERR=$(mktemp)
++cleanup() { rm -f "$TMP_ENV" "$TMP_JSON" "$TMP_ERR"; }
++trap cleanup EXIT
++
++cp .env.example "$TMP_ENV"
++
++echo ""
++echo "--- Compose file parses and resolves (docker compose config) ---"
++if docker compose -f "$COMPOSE_FILE" --env-file "$TMP_ENV" config --format json >"$TMP_JSON" 2>"$TMP_ERR"; then
++    pass "docker compose config resolves $COMPOSE_FILE against a throwaway .env.example-based env"
++else
++    fail "docker compose config resolves $COMPOSE_FILE against a throwaway .env.example-based env" "$(cat "$TMP_ERR")"
++    echo ""
++    echo "=== Test Results ==="
++    echo "Total: $test_count | Passed: $pass_count | Failed: $fail_count"
++    echo "✗ Cannot continue: compose config did not resolve"
++    exit 1
++fi
++
++# $1 = python boolean expression over `data` (the parsed compose JSON), $2 = message
++check_model() {
++    if python3 -c "
++import json, sys
++with open('$TMP_JSON') as f:
++    data = json.load(f)
++sys.exit(0 if ($1) else 1)
++" 2>/dev/null; then
++        pass "$2"
++    else
++        fail "$2" "Expression: $1"
++    fi
++}
++
++echo ""
++echo "--- Services present (db, backend, frontend — no extras, YAGNI) ---"
++check_model "set(data['services'].keys()) == {'db', 'backend', 'frontend'}" \
++    "exactly the services db, backend, frontend are declared"
++
++echo ""
++echo "--- db service (PostgreSQL) ---"
++check_model "data['services']['db']['image'].startswith('postgres:')" \
++    "db uses the official postgres image, pinned to a major version"
++check_model "data['services']['db'].get('healthcheck', {}).get('test') and 'pg_isready' in ' '.join(data['services']['db']['healthcheck']['test'])" \
++    "db has a pg_isready healthcheck"
++check_model "any(v.get('type') == 'volume' for v in data['services']['db'].get('volumes', []))" \
++    "db persists data on a named volume (not a bind mount)"
++check_model "any(str(p.get('published')) == '5432' for p in data['services']['db'].get('ports', []))" \
++    "db publishes 5432 to the host (native backend / quickstart connects to it)"
++
++echo ""
++echo "--- backend service (Strapi, Node 20, bind-mounted source) ---"
++check_model "data['services']['backend']['image'] == 'node:20'" \
++    "backend runs the official node:20 image (no custom Dockerfile in T010)"
++check_model "any(v.get('type') == 'bind' and v.get('target') == '/app' for v in data['services']['backend'].get('volumes', []))" \
++    "backend bind-mounts its source directory into the container"
++check_model "any(v.get('type') == 'volume' and v.get('target') == '/app/node_modules' for v in data['services']['backend'].get('volumes', []))" \
++    "backend keeps container node_modules off the host tree (named/anonymous volume over /app/node_modules)"
++check_model "'develop' in ' '.join(data['services']['backend'].get('command') or [])" \
++    "backend command starts the Strapi dev server (npm run develop)"
++check_model "data['services']['backend']['environment'].get('DATABASE_CLIENT') == 'postgres'" \
++    "backend sets DATABASE_CLIENT=postgres"
++check_model "data['services']['backend']['environment'].get('DATABASE_HOST') == 'db'" \
++    "backend sets DATABASE_HOST=db"
++check_model "data['services']['backend']['environment'].get('DATABASE_URL', '__missing__') == ''" \
++    "backend neutralises DATABASE_URL (empty) so DATABASE_HOST=db is not overridden by database.ts's connectionString precedence"
++check_model "data['services']['backend'].get('depends_on', {}).get('db', {}).get('condition') == 'service_healthy'" \
++    "backend depends_on db with condition service_healthy"
++check_model "any(str(p.get('published')) == '1337' for p in data['services']['backend'].get('ports', []))" \
++    "backend publishes 1337"
++hc="$(python3 -c "
++import json
++with open('$TMP_JSON') as f:
++    data = json.load(f)
++t = data['services']['backend'].get('healthcheck', {}).get('test', [])
++print(' '.join(t))
++")"
++if echo "$hc" | grep -q "1337" && echo "$hc" | grep -q "/health"; then
++    pass "backend healthcheck probes GET /health on port 1337"
++else
++    fail "backend healthcheck probes GET /health on port 1337" "healthcheck test was: $hc"
++fi
++
++echo ""
++echo "--- frontend service (Next.js, Node 20, bind-mounted source) ---"
++check_model "data['services']['frontend']['image'] == 'node:20'" \
++    "frontend runs the official node:20 image (no custom Dockerfile in T010)"
++check_model "any(v.get('type') == 'bind' and v.get('target') == '/app' for v in data['services']['frontend'].get('volumes', []))" \
++    "frontend bind-mounts its source directory into the container"
++check_model "any(v.get('type') == 'volume' and v.get('target') == '/app/node_modules' for v in data['services']['frontend'].get('volumes', []))" \
++    "frontend keeps container node_modules off the host tree"
++check_model "'dev' in ' '.join(data['services']['frontend'].get('command') or [])" \
++    "frontend command starts the Next.js dev server (npm run dev)"
++check_model "'backend' in data['services']['frontend'].get('depends_on', {})" \
++    "frontend depends_on backend"
++check_model "any(str(p.get('published')) == '3000' for p in data['services']['frontend'].get('ports', []))" \
++    "frontend publishes 3000"
++check_model "'localhost:1337' in data['services']['frontend']['environment'].get('NEXT_PUBLIC_API_BASE_URL', '')" \
++    "frontend NEXT_PUBLIC_API_BASE_URL points at the backend as the browser sees it (http://localhost:1337)"
++
++echo ""
++echo "--- YAGNI: no extra services, profiles, or prod overrides ---"
++check_model "'profiles' not in data" "no top-level 'profiles' key"
++check_model "len(data['services']) == 3" "no services beyond db, backend, frontend"
++
++echo ""
++echo "--- Principe IV: no secret literal in the raw YAML (only \${...} references or explicit empty) ---"
++TMP_PY=$(mktemp --suffix=.py)
++cat >"$TMP_PY" <<'PYEOF'
++import re
++import sys
++
++compose_file = sys.argv[1]
++
++SECRETISH = re.compile(r"(PASSWORD|SECRET|SALT|_KEY|KEYS|JWT|TOKEN)", re.IGNORECASE)
++KEYVAL = re.compile(r"^\s*[\"']?([A-Za-z0-9_]+)[\"']?\s*:\s*(.*)$")
++
++bad = []
++with open(compose_file) as f:
++    for lineno, line in enumerate(f, start=1):
++        stripped = line.split("#", 1)[0]
++        m = KEYVAL.match(stripped)
++        if not m:
++            continue
++        key, value = m.group(1), m.group(2).strip()
++        if not SECRETISH.search(key):
++            continue
++        # value must be an interpolation, empty, or absent (mapping/omitted)
++        v = value.strip().strip('"').strip("'")
++        if v == "" or v.startswith("${") or v.startswith("%"):
++            continue
++        bad.append((lineno, key, value))
++
++if bad:
++    for lineno, key, value in bad:
++        sys.stderr.write(f"{lineno}: {key}: {value}\n")
++    sys.exit(1)
++sys.exit(0)
++PYEOF
++if python3 "$TMP_PY" "$COMPOSE_FILE" 2>"$TMP_ERR"; then
++    pass "no secret-looking key in $COMPOSE_FILE has a literal (non-\${...}, non-empty) value"
++else
++    fail "no secret-looking key in $COMPOSE_FILE has a literal (non-\${...}, non-empty) value" "$(cat "$TMP_ERR")"
++fi
++rm -f "$TMP_PY"
++
++echo ""
++echo "--- .env.example documents every variable docker-compose.yml needs ---"
++COMPOSE_VARS=$(grep -vE '^\s*#' "$COMPOSE_FILE" | grep -oE '\$\{[A-Z0-9_]+\}' | sed -E 's/\$\{|\}//g' | sort -u)
++missing=""
++for var in $COMPOSE_VARS; do
++    if ! grep -q "^${var}=" .env.example; then
++        missing="$missing $var"
++    fi
++done
++if [ -z "$missing" ]; then
++    pass ".env.example documents every \${VAR} referenced by $COMPOSE_FILE"
++else
++    fail ".env.example documents every \${VAR} referenced by $COMPOSE_FILE" "Missing:$missing"
++fi
++
++echo ""
++echo "=== Test Results ==="
++echo "Total: $test_count | Passed: $pass_count | Failed: $fail_count"
++
++if [ $fail_count -eq 0 ]; then
++    echo ""
++    echo "✓ All tests passed!"
++    exit 0
++else
++    echo ""
++    echo "✗ Some tests failed"
++    exit 1
++fi

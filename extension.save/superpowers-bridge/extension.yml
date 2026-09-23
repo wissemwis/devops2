@@ -3,7 +3,7 @@ schema_version: "1.0"
 extension:
   id: superpowers-bridge
   name: "Superpowers Bridge"
-  version: "0.4.1"
+  version: "0.5.1"
   description: "Delegates spec refinement to Superpowers brainstorming and implementation to Superpowers brainstorming + writing-plans + TDD + subagent-driven-development"
   author: "Wissem Hamza"
   license: MIT
@@ -18,7 +18,7 @@ provides:
       description: "Refine the raw feature idea via Superpowers brainstorming before /speckit.specify writes spec.md"
     - name: speckit.superpowers-bridge.tdd-implement
       file: commands/speckit.superpowers-bridge.tdd-implement.md
-      description: "Brainstorm and plan the in-scope tasks, then execute the plan via Superpowers subagent-driven-development + test-driven-development"
+      description: "Pick the next task(s) from Jira, brainstorm and plan them, then execute the plan via Superpowers subagent-driven-development + test-driven-development"
 
 hooks:
   before_specify:
@@ -29,7 +29,7 @@ hooks:
   before_implement:
     command: speckit.superpowers-bridge.tdd-implement
     optional: false
-    description: "Delegates task execution to Superpowers brainstorming + writing-plans (once per run) + TDD + subagent-driven-development"
+    description: "Delegates task execution (Jira-selected) to Superpowers brainstorming + writing-plans (once per run) + TDD + subagent-driven-development"
 
 tags:
   - "superpowers"

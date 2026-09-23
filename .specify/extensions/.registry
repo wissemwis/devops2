@@ -1,20 +1,4 @@
 {
   "schema_version": "1.0",
-  "extensions": {
-    "superpowers-bridge": {
-      "version": "0.2.0",
-      "source": "local",
-      "manifest_hash": "sha256:d4c3750216e8302630d7804413250dd87d72890d3e6bd1eb2d3cd1e9f7a60027",
-      "enabled": true,
-      "priority": 10,
-      "registered_commands": {
-        "claude": [
-          "speckit.superpowers-bridge.brainstorm",
-          "speckit.superpowers-bridge.tdd-implement"
-        ]
-      },
-      "registered_skills": [],
-      "installed_at": "2026-09-19T22:44:28.087462+00:00"
-    }
-  }
+  "extensions": {}
 }

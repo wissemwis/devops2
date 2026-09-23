@@ -1,1 +1,0 @@
-../../../.specify/extensions/superpowers-bridge/.specify-dev/agent-commands/claude/speckit-superpowers-bridge-brainstorm/SKILL.md

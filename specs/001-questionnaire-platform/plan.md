@@ -26,6 +26,11 @@ existing S5-S11 calendar as a migration from V1, not a rewrite. Updates Technica
 (Target Platform) below and `research.md`. `data-model.md`/`contracts/api.md` unaffected
 (deployment target does not change the REST contract).
 
+**Amendment 2026-09-23 (d)**: The `superpowers-bridge` Spec Kit extension (hooks
+`before_specify`/`before_implement` delegating to Superpowers) is no longer used — archived in
+`extension.save/`, per constitution v1.2.0. Technical Context (Testing) and the Constitution
+Check row for Principe I below no longer name the hook; the Test-First obligation is unchanged.
+
 ## Summary
 
 Plateforme web permettant à un auteur de créer/publier des questionnaires (Likert, choix
@@ -49,8 +54,7 @@ Nodemailer ou service SMTP équivalent (emails d'invitation, FR-017)
 
 **Testing**: Jest + Supertest (fichiers `.test.ts`) pour les tests de contrat/intégration de
 l'API Strapi, Vitest + Testing Library (fichiers `.test.ts`/`.test.tsx`) pour le frontend
-Next.js — appliqués selon le cycle RED-GREEN-REFACTOR imposé par le hook `before_implement`
-(Superpowers `test-driven-development`)
+Next.js — appliqués selon le cycle RED-GREEN-REFACTOR (Principe I)
 
 **Target Platform**: **V1 (référence courante)** — Vercel pour le frontend Next.js, Strapi
 Cloud/SaaS pour le backend, tous deux déployés depuis le dépôt Git (build/déploiement managé,
@@ -80,7 +84,7 @@ séance du module (11 séances)
 
 | Principe | Statut | Justification |
 |---|---|---|
-| I. Test-First (NON-NEGOTIABLE) | PASS | `/speckit-implement` délègue à `before_implement` (superpowers-bridge → subagent-driven-development + test-driven-development) : un sous-agent par tâche, cycle RED-GREEN-REFACTOR obligatoire avant tout code de production. |
+| I. Test-First (NON-NEGOTIABLE) | PASS | Cycle RED-GREEN-REFACTOR obligatoire avant tout code de production pour chaque tâche de `tasks.md` ; chaque tâche est revue avant d'être marquée `[X]`. |
 | II. Simplicité et YAGNI | PASS | Structure à deux projets (backend Strapi / frontend Next.js) justifiée par la nature même du produit décrit (API + front séparés dans la spec source) ; pas de couche d'abstraction additionnelle (pas de microservices, pas de BFF) à ce stade. Next.js n'introduit pas de complexité supplémentaire par rapport à React+Vite — même bibliothèque de composants, juste un outillage de build/routage différent. |
 | III. Infrastructure as Code et Reproductibilité | PASS | V1 : config Vercel (`vercel.json`, variables d'environnement) et Strapi Cloud versionnées dans le dépôt, déploiement déclenché par push Git (pas d'étape manuelle). Migration ultérieure : Dockerfile + docker-compose.yml versionnés dès S5-S7 ; pipeline CI versionné (Jenkinsfile ou .gitlab-ci.yml) ; manifests Kubernetes versionnés pour S11 — conforme à constitution v1.1.0. |
 | IV. Sécurité par défaut | PASS | Secrets (DB, SMTP, JWT Strapi) injectés via variables d'environnement/CI secrets, jamais commités ; accès aux questionnaires privés par lien signé unique (FR-017), vérifié côté serveur. |

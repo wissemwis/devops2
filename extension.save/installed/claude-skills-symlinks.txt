@@ -1,0 +1,2 @@
+speckit-superpowers-bridge-brainstorm -> ../../../.specify/extensions/superpowers-bridge/.specify-dev/agent-commands/claude/speckit-superpowers-bridge-brainstorm/SKILL.md
+speckit-superpowers-bridge-tdd-implement -> ../../../.specify/extensions/superpowers-bridge/.specify-dev/agent-commands/claude/speckit-superpowers-bridge-tdd-implement/SKILL.md

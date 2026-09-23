@@ -1,5 +1,5 @@
 ---
-description: "Brainstorm the in-scope tasks, plan them with Superpowers writing-plans, then execute the plan via Superpowers subagent-driven-development and test-driven-development instead of Spec Kit's built-in sequential executor"
+description: "Pick the next task(s) from the Jira project, brainstorm them, plan them with Superpowers writing-plans, then execute the plan via Superpowers subagent-driven-development and test-driven-development instead of Spec Kit's built-in sequential executor"
 ---
 
 # Superpowers TDD Implementation Bridge
@@ -7,7 +7,9 @@ description: "Brainstorm the in-scope tasks, plan them with Superpowers writing-
 ## Purpose
 
 Replace /speckit.implement's default single-context task loop with Superpowers'
-full workflow on the tasks this run will execute: an interactive
+full workflow on the tasks this run will execute — selected from the Jira
+project that tracks this feature, whose issues are moved and commented as the
+work progresses: an interactive
 `brainstorming` session, a `writing-plans` implementation plan, then
 `subagent-driven-development` on that plan — a fresh implementer subagent per
 plan task, enforced RED-GREEN-REFACTOR, and one task review (spec compliance
@@ -21,29 +23,51 @@ verdicts) after each.
    `specs/001-questionnaire-platform/`). From FEATURE_DIR, read `tasks.md`,
    `plan.md`, `spec.md`, and — if present — `/memory/constitution.md`.
    Record their absolute paths.
-2. **Determine this run's scope**, in this order — never silently default to
-   "every unchecked task":
-   - This command's own arguments below ($ARGUMENTS), if non-empty.
-   - Else, the user input given to the invoking `/speckit-implement`, if
-     non-empty.
-   - Else, ASK the human what to run, offering "next unchecked task" (the
-     first unchecked task in `tasks.md` in dependency order) as the default,
-     and wait for their answer.
-   A list of task IDs scopes the run to those tasks.
+2. **Determine this run's scope from Jira.** Jira drives task selection;
+   `tasks.md` stays the trace (its `[X]` + reviewer-verdict annotation is still
+   required, per CLAUDE.md's HARD RULE). Read the Jira settings from
+   `.specify/extensions/superpowers-bridge/jira.yml` (site, project key,
+   issue type, status/transition names). Resolve the Atlassian `cloudId` once
+   (`getAccessibleAtlassianResources`, matching the configured site) and reuse
+   it for every Jira call in this run. If Jira is unreachable or the config is
+   missing, STOP and tell the human — never silently fall back to `tasks.md`.
+   Scope, in this order — never silently "every open issue":
+   - This command's own arguments below ($ARGUMENTS), if non-empty; else the
+     user input given to the invoking `/speckit-implement`, if non-empty; else
+     ASK the human, offering "next task" as the default, and wait.
+   - **Jira keys** (e.g. `D2-19`) or **task IDs** (e.g. `T011`) in that input
+     scope the run to those issues (a task ID is resolved to its issue through
+     the `Txxx` prefix of the issue summary).
+   - **"next task"** = the first issue returned by
+     `project = <key> AND issuetype = <issue_type> AND status = "<todo_status>"
+     ORDER BY rank ASC, key ASC` whose `Txxx` item in `tasks.md` is still
+     unchecked. Skip — and report to the human, without changing them — issues
+     whose `tasks.md` item is already `[X]` (Jira/tasks.md out of sync).
+   - Every in-scope issue must map to exactly one unchecked `tasks.md` item via
+     its `Txxx` summary prefix; if one does not (no prefix, no matching item,
+     duplicates), STOP and ask. Also mention any unchecked `tasks.md` item
+     earlier in dependency order that has no Jira issue at all.
+   - Once scope is fixed, move each in-scope issue to the configured
+     in-progress status (transition `in_progress_transition`) and add a
+     comment: run started, branch name, and that design/plan approval comes
+     next.
 
    $ARGUMENTS
 
-3. **Git safety, before brainstorming touches anything.** If the current
-   branch is `main` or `master`, create and switch to
-   `claude/<task-ids>-<slug>` before doing anything else in this hook;
-   otherwise stay on the current feature branch. Once
+3. **Git safety, before brainstorming touches anything.** One branch — and
+   later one PR — per run. Unless the current branch already is this run's
+   branch, create and switch to `claude/task-<jira-key-lowercase>-<slug>`
+   (e.g. `claude/task-d2-19-contract-questionnaires-create`; several issues:
+   join the keys) from the current `HEAD`. Never commit on `main`/`master`.
+   If `HEAD` is a feature branch whose PR is still open, the new branch is
+   stacked on it — say so in the Jira comment and, later, in the PR. Once
    `subagent-driven-development`'s workspace exists (step 6), note there that
-   its worktree setup may reuse this branch in place — this is a standing
-   fact about how this repo runs the hook, not a fresh ruling to re-make
-   every run.
+   its worktree setup reuses this branch in place — a standing fact about how
+   this repo runs the hook, not a fresh ruling to re-make every run.
 4. **Brainstorm the scope — once per run, before any dispatch.** Invoke the
-   Superpowers `brainstorming` skill on the in-scope task(s): their exact
-   `tasks.md` text plus the absolute paths of `spec.md`, `plan.md`,
+   Superpowers `brainstorming` skill on the in-scope task(s): their Jira key,
+   summary and description, their exact `tasks.md` text, plus the absolute
+   paths of `spec.md`, `plan.md`,
    `constitution.md` and, if present, `research.md`, `data-model.md`,
    `contracts/` and `quickstart.md`. Follow the skill's own process (classify
    bounded/architectural, clarifying questions one at a time, 2-3
@@ -131,22 +155,28 @@ verdicts) after each.
 8. After each subagent completes, run the task review (spec compliance + code
    quality, SDD's single review with two verdicts) that
    `subagent-driven-development` prescribes. Mark a `tasks.md` item `[X]` —
-   with an inline annotation recording the reviewer verdict — only once every
-   plan task that names its ID has passed review.
+   with an inline annotation recording the reviewer verdict and its Jira key —
+   only once every plan task that names its ID has passed review. In the same
+   step, move its Jira issue to the configured done status (transition
+   `done_transition`) and add a comment with the reviewer verdict (spec +
+   quality), the commit range, the test evidence summary, and any parked or
+   carried-forward findings.
 9. After the step-5 plan is approved, execute continuously without
    pausing between tasks to ask "should I continue?". Only stop for: an
    irreversible or destructive operation, a security-sensitive action, a side
    effect outside this worktree (merge, push to a shared branch, publish), or
    a plan too broken to proceed — and say why.
 10. Once every in-scope task is complete, run the whole-branch review
-    `subagent-driven-development` prescribes. Do NOT delete this plan's SDD
-    workspace afterward, even though SDD's own Finish step says to — some
-    `.superpowers/sdd/tasks/*` files are git-tracked historically in this
-    repo, so leave the workspace in place. Still collect the "Rulings I
-    made" list per SDD's Finish section, then invoke
+    `subagent-driven-development` prescribes, then follow SDD's Finish
+    section: collect the "Rulings I made" list, make sure each ruling is also
+    recorded somewhere durable (the `tasks.md` annotation and the Jira done
+    comment) — `.superpowers/` is git-ignored, so the ledger is local scratch —
+    delete only this plan's SDD workspace directory, then invoke
     `superpowers:finishing-a-development-branch` — its push/PR/merge options
     remain gated by the human (the "only stop for ... a push to a shared
-    branch, publish" rule in step 9 above already covers it). Then report:
+    branch, publish" rule in step 9 above already covers it). If a PR is
+    opened, add its URL as a comment on every in-scope Jira issue. Then
+    report: the Jira keys,
     the design document and plan paths, tasks completed, files touched,
     tests added, and any ruling you made without stopping to ask.
 11. **Terminal instruction.** This hook REPLACES `/speckit-implement`'s

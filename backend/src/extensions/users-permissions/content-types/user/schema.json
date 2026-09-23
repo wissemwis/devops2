@@ -47,8 +47,14 @@
       "configurable": false
     },
     "role": {
-      "type": "enumeration",
-      "enum": ["auteur", "repondant", "administrateur"],
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "plugin::users-permissions.role",
+      "inversedBy": "users",
+      "configurable": false
+    },
+    "nom": {
+      "type": "string",
       "required": true
     }
   }

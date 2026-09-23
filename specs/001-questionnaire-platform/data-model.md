@@ -11,8 +11,15 @@ Dérivé de la section "Key Entities" de `spec.md`. Modélisé comme content-typ
 |---|---|---|
 | email | string, unique | requis, format email |
 | nom | string | requis |
-| role | enum: auteur, répondant, administrateur | requis (FR-016) — pas de rôle "analyste" séparé |
-| dateInscription | datetime | généré automatiquement à la création |
+| role | relation → rôle `users-permissions` (types `auteur`, `repondant`, `administrateur`) | requis (FR-016) — pas de rôle "analyste" séparé |
+| dateInscription | datetime | `createdAt` natif de Strapi |
+
+**Amendement 2026-09-23 (T061)** : `role` n'est plus un enum ajouté au User (T007, qui écrasait
+la relation native et cassait la résolution des permissions) mais la relation native du plugin
+`users-permissions` vers ses rôles ; les trois rôles FR-016 sont des rôles `users-permissions`
+de types `auteur`, `repondant`, `administrateur`. `nom` est ajouté par l'extension
+`backend/src/extensions/users-permissions/content-types/user/schema.json` ; `dateInscription`
+est le `createdAt` natif.
 
 ## Questionnaire
 

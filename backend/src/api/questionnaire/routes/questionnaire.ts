@@ -6,5 +6,11 @@ export default {
       handler: 'api::questionnaire.questionnaire.create',
       config: { policies: [] },
     },
+    {
+      method: 'POST',
+      path: '/questionnaires/:id/publish',
+      handler: 'api::questionnaire.questionnaire.publish',
+      config: { policies: [] },
+    },
   ],
 };

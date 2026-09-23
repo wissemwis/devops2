@@ -8,6 +8,7 @@ export const ROLE_PERMISSIONS: Record<BusinessRoleType, readonly string[]> = {
     'plugin::users-permissions.user.me',
     'plugin::users-permissions.role.find',
     'api::questionnaire.questionnaire.create',
+    'api::questionnaire.questionnaire.publish',
     'api::question.question.add',
   ],
   repondant: [],

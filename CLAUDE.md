@@ -65,7 +65,9 @@ T001–T010 still describe how those tasks were built and reviewed.
 - `docker-compose.yml` — local dev stack (T010, non-root/loopback fixes from the final-fix wave):
   `db` (postgres:16, `127.0.0.1:5432`), `backend` (node:20 + bind mount, `npm run develop`,
   `127.0.0.1:1337`, healthcheck on `/health`), `frontend` (node:20, `npm run dev`,
-  `127.0.0.1:3000`); every published port is loopback-only. `backend`/`frontend` run as the
+  `127.0.0.1:3000`); every published port is loopback-only by default — `BIND_ADDRESS`
+  (default `127.0.0.1`) moves the backend/frontend ports to another interface, e.g. `0.0.0.0` in a
+  local env file for LAN access; `db` always stays on loopback. `backend`/`frontend` run as the
   image's non-root `node` user (uid:gid 1000:1000), via a one-shot `init` helper service that
   chowns the named node_modules volumes first — verified live to leave no root-owned files under
   `backend/`/`frontend/` on the host (the empty node_modules mountpoint directories that Docker's

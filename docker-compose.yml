@@ -75,7 +75,7 @@ services:
       - ./backend:/app
       - backend-node-modules:/app/node_modules
     ports:
-      - "127.0.0.1:1337:1337"
+      - "${BIND_ADDRESS:-127.0.0.1}:1337:1337"
     environment:
       DATABASE_CLIENT: postgres
       # Neutralised on purpose — see the file header note above.
@@ -130,7 +130,7 @@ services:
       - ./frontend:/app
       - frontend-node-modules:/app/node_modules
     ports:
-      - "127.0.0.1:3000:3000"
+      - "${BIND_ADDRESS:-127.0.0.1}:3000:3000"
     environment:
       # The value the *browser* must reach, not the Docker-network name —
       # deliberately literal (not from .env.example, whose

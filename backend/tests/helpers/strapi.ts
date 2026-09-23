@@ -17,6 +17,7 @@ const TEST_ENV = {
   ENCRYPTION_KEY: 'test-encryption-key',
   JWT_SECRET: 'test-jwt-secret',
   LOG_LEVEL: 'error',
+  STRAPI_TELEMETRY_DISABLED: 'true',
 };
 
 let instance: Core.Strapi | undefined;

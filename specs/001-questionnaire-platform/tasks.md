@@ -66,11 +66,11 @@ le publier, vérifier la transition de statut brouillon → publié et la prése
 
 > Écrire ces tests en premier, confirmer qu'ils échouent avant toute implémentation (Principe I).
 
-- [ ] T011 [P] [US1] Contract test `POST /api/questionnaires` in `backend/tests/contract/test_questionnaires_create.ts` *(Jest harness already introduced by T061 — reuse backend/tests/helpers/strapi.ts.)*
-- [ ] T012 [P] [US1] Contract test `PATCH /api/questionnaires/:id/questions` in `backend/tests/contract/test_questions_add.ts`
-- [ ] T013 [P] [US1] Contract test `POST /api/questionnaires/:id/publish` (incl. rejet 422 si aucune question — edge case spec.md) in `backend/tests/contract/test_questionnaire_publish.ts`
-- [ ] T014 [P] [US1] Contract test `POST /api/questionnaires/:id/close` in `backend/tests/contract/test_questionnaire_close.ts`
-- [ ] T015 [P] [US1] Integration test quickstart.md Scénario 1 in `backend/tests/integration/test_create_publish.ts`
+- [ ] T011 [P] [US1] Contract test `POST /api/questionnaires` in `backend/tests/contract/questionnaires_create.test.ts` *(Jest harness already introduced by T061 — reuse backend/tests/helpers/strapi.ts.)*
+- [ ] T012 [P] [US1] Contract test `PATCH /api/questionnaires/:id/questions` in `backend/tests/contract/questions_add.test.ts`
+- [ ] T013 [P] [US1] Contract test `POST /api/questionnaires/:id/publish` (incl. rejet 422 si aucune question — edge case spec.md) in `backend/tests/contract/questionnaire_publish.test.ts`
+- [ ] T014 [P] [US1] Contract test `POST /api/questionnaires/:id/close` in `backend/tests/contract/questionnaire_close.test.ts`
+- [ ] T015 [P] [US1] Integration test quickstart.md Scénario 1 in `backend/tests/integration/create_publish.test.ts`
 
 ### Implementation for User Story 1
 
@@ -100,12 +100,12 @@ invitation (quickstart.md Scénario 3).
 
 ### Tests for User Story 2 ⚠️
 
-- [ ] T025 [P] [US2] Contract test `GET /api/questionnaires/:id` (accès public sans auth, refus si privé sans jeton — FR-007/FR-008) in `backend/tests/contract/test_questionnaire_get.ts`
-- [ ] T026 [P] [US2] Contract test `POST /api/questionnaires/:id/reponses` (upsert, statut en_cours) in `backend/tests/contract/test_reponses_create.ts`
-- [ ] T027 [P] [US2] Contract test `POST /api/questionnaires/:id/reponses/:reponseId/submit` (422 si question obligatoire manquante — FR-010) in `backend/tests/contract/test_reponse_submit.ts`
-- [ ] T028 [P] [US2] Contract test `POST /api/questionnaires/:id/invitations` (création + envoi email) in `backend/tests/contract/test_invitations_create.ts`
-- [ ] T029 [P] [US2] Integration test quickstart.md Scénario 2 (public) in `backend/tests/integration/test_repondre_public.ts`
-- [ ] T030 [P] [US2] Integration test quickstart.md Scénario 3 (privé, pré-remplissage nom/prénom/email) in `backend/tests/integration/test_repondre_prive.ts`
+- [ ] T025 [P] [US2] Contract test `GET /api/questionnaires/:id` (accès public sans auth, refus si privé sans jeton — FR-007/FR-008) in `backend/tests/contract/questionnaire_get.test.ts`
+- [ ] T026 [P] [US2] Contract test `POST /api/questionnaires/:id/reponses` (upsert, statut en_cours) in `backend/tests/contract/reponses_create.test.ts`
+- [ ] T027 [P] [US2] Contract test `POST /api/questionnaires/:id/reponses/:reponseId/submit` (422 si question obligatoire manquante — FR-010) in `backend/tests/contract/reponse_submit.test.ts`
+- [ ] T028 [P] [US2] Contract test `POST /api/questionnaires/:id/invitations` (création + envoi email) in `backend/tests/contract/invitations_create.test.ts`
+- [ ] T029 [P] [US2] Integration test quickstart.md Scénario 2 (public) in `backend/tests/integration/repondre_public.test.ts`
+- [ ] T030 [P] [US2] Integration test quickstart.md Scénario 3 (privé, pré-remplissage nom/prénom/email) in `backend/tests/integration/repondre_prive.test.ts`
 
 ### Implementation for User Story 2
 
@@ -134,11 +134,11 @@ non-répondants et la relance pour un questionnaire privé (quickstart.md Scéna
 
 ### Tests for User Story 3 ⚠️
 
-- [ ] T040 [P] [US3] Contract test `GET /api/questionnaires/:id/resultats` in `backend/tests/contract/test_resultats.ts`
-- [ ] T041 [P] [US3] Contract test `GET /api/questionnaires/:id/export.csv` in `backend/tests/contract/test_export_csv.ts`
-- [ ] T042 [P] [US3] Contract test `GET /api/questionnaires/:id/non-repondants` (questionnaire privé uniquement — FR-018) in `backend/tests/contract/test_non_repondants.ts`
-- [ ] T043 [P] [US3] Contract test `POST /api/questionnaires/:id/relance` in `backend/tests/contract/test_relance.ts`
-- [ ] T044 [P] [US3] Integration test quickstart.md Scénario 4 in `backend/tests/integration/test_resultats_export.ts`
+- [ ] T040 [P] [US3] Contract test `GET /api/questionnaires/:id/resultats` in `backend/tests/contract/resultats.test.ts`
+- [ ] T041 [P] [US3] Contract test `GET /api/questionnaires/:id/export.csv` in `backend/tests/contract/export_csv.test.ts`
+- [ ] T042 [P] [US3] Contract test `GET /api/questionnaires/:id/non-repondants` (questionnaire privé uniquement — FR-018) in `backend/tests/contract/non_repondants.test.ts`
+- [ ] T043 [P] [US3] Contract test `POST /api/questionnaires/:id/relance` in `backend/tests/contract/relance.test.ts`
+- [ ] T044 [P] [US3] Integration test quickstart.md Scénario 4 in `backend/tests/integration/resultats_export.test.ts`
 
 ### Implementation for User Story 3
 
@@ -270,7 +270,7 @@ pédagogique Docker/CI/Kubernetes du module.
 - [ ] T068 Validate question image format and size (allowed MIME types, max size; clear error on rejection) with a contract test, per FR-003 and spec Edge Cases (partial) (depends on T017, T019)
 - [ ] T069 Contract tests for FR-016 authorization: an `administrateur` can close, view results, export and send reminders on any questionnaire; an `auteur` gets `403` on a questionnaire they do not own, in `backend/tests/contract/authorization.test.ts` per FR-016 (partial) (depends on T061, T062)
 - [ ] T070 Performance test: `GET /api/questionnaires/:id/resultats` answers in under 2 s for a questionnaire with 1000 complete responses, in `backend/tests/integration/resultats_performance.test.ts` per SC-003 (partial) (depends on T045)
-- [ ] T071 Name every Jest test file `<name>.test.ts` (plan.md Testing) instead of the `test_<name>.ts` paths written in T011–T015, T025–T030 and T040–T044, keeping their directories, per plan: Testing decision (contradicts)
+- [X] T071 Name every Jest test file `<name>.test.ts` (plan.md Testing) instead of the `test_<name>.ts` paths written in T011–T015, T025–T030 and T040–T044, keeping their directories, per plan: Testing decision (contradicts) *(Jira D2-81; bounded design approved in chat, no spec/plan. The 16 test paths of T011–T015, T025–T030 and T040–T044 renamed from `test_<name>.ts` to `<name>.test.ts` in the same directories, keeping the snake_case of the existing tests (`users_schema.test.ts`, `role_permissions.test.ts`), so they match the Jest `testMatch` `<rootDir>/tests/**/*.test.ts` introduced by T061 — written as before, they would never have run. The descriptions of the 16 matching Jira stories (D2-19…D2-23, D2-33…D2-38, D2-48…D2-52) were updated to the same paths. No code change.)*
 - [ ] T072 Make backend container stdout JSON-only: disable or route Strapi's startup banner (`console.log` in `@strapi/core` startup logger) through the JSON logger, per Constitution V (partial)
 - [ ] T073 Replace the static `tests/structure/test_health_route.sh` check with an in-process test of the bare `GET /health` (200 and 503) once the Jest harness exists, per Constitution V (partial) (depends on T011)
 - [ ] T074 Document `UID`/`GID` in `.env.example` (or drop the parameterised `user:` framing) so `docker-compose.yml` bind-mounted files match the host user, per Constitution III (partial)

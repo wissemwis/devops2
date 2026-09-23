@@ -1,6 +1,6 @@
 # T062 (Jira D2-72) — Role permissions seed and development `auteur` account
 
-**Date:** 2026-09-23 · **Status:** approved in brainstorming, pending written-spec review
+**Date:** 2026-09-23 · **Status:** approved (written spec reviewed by the owner on 2026-09-23)
 **Task:** `specs/001-questionnaire-platform/tasks.md` T062 (Phase 9 Convergence) — "Seed role
 permissions (which role may call which contracts/api.md endpoint) and, in development only
 (env-driven, no secret in the repository), a test `auteur` account used by quickstart.md
@@ -36,7 +36,8 @@ controller action of a loaded API or plugin
 - Each later endpoint task grants its action by adding one entry to that table.
 - In development only, a test `auteur` account exists at boot when its credentials are given
   through environment variables; no credential is in the repository (Principe IV).
-- No business role can write the `role` relation of a user (T061 final review carry-forward).
+- No business role can write the `role` relation of a user (T061 final review carry-forward),
+  nor create, update or delete a role itself.
 
 **Out of scope:** the login page (T063); permissions of business endpoints (added by each
 endpoint task, T018 onwards); the "propriétaire" ownership rule of `contracts/api.md` (a
@@ -74,8 +75,10 @@ export async function grantRolePermissions(
   table is a compile error.
 - `user.me` lets a logged-in user read its own profile (T063). `role.find` is required for
   `GET /api/users/me?populate=role` to return the role: the content-API sanitizer strips a
-  relation the caller cannot `find` (observed in T061's `users_schema.test.ts`). It exposes only
-  role names and descriptions.
+  relation the caller cannot `find` (observed in T061's `users_schema.test.ts`). It also grants
+  direct access to `GET /api/users-permissions/roles`, which returns every role (name, type,
+  description) together with `nb_users`, a per-role user count (`@strapi/plugin-users-permissions`
+  `services/role.js` `find()`), not only names and descriptions.
 - `repondant` gets nothing: a respondent reaches questionnaires through a public link or a
   signed invitation token (FR-007, FR-017), not an account (`roles.ts` description: "aucun
   droit par défaut").
@@ -115,6 +118,14 @@ export async function ensureDevAuteurAccount(
   `nom` = `DEV_AUTEUR_NOM` or `Auteur de test`, `provider: 'local'`, `confirmed: true`,
   `blocked: false`, `role` = id of the `auteur` role. Log `info`
   `Created dev auteur account "<email>"`.
+- The creation call is wrapped in a `try`/`catch`: the users-permissions user service validates
+  against the native schema (e.g. `password` `minLength: 6`) and throws a `ValidationError`
+  whose `details.errors[].value` holds the rejected value, including the plaintext password —
+  letting it escape bootstrap would reach Strapi's `stopWithError` and log that error object (and
+  the password inside it) to stdout. On failure, log `warn`
+  `Dev auteur account "<email>" not created: <err.message>` (`err.message`, a yup-generated
+  sentence such as "password must be at least 6 characters", never the error object nor
+  `err.details`) and return without throwing: boot continues.
 - The password never appears in any log line or error message.
 
 ### 4.3 Wiring — `backend/src/index.ts`
@@ -148,8 +159,9 @@ user is created).
 - a permission added by hand to `auteur` is still present after `grantRolePermissions` runs
   again, and no duplicate row is created;
 - every action in `ROLE_PERMISSIONS` is a real controller action of the loaded app;
-- no business role holds `plugin::users-permissions.user.update`, `user.create` or
-  `user.destroy` (self-promotion guard).
+- no business role holds `plugin::users-permissions.user.update`, `user.create`,
+  `user.destroy`, `role.createRole`, `role.updateRole` or `role.deleteRole` (self-promotion
+  guard — the exact action names of `@strapi/plugin-users-permissions`'s `role` controller).
 
 `backend/tests/integration/dev_account.test.ts`:
 - with `NODE_ENV=development` and the variables, the account is created with role `auteur`;
@@ -158,7 +170,10 @@ user is created).
 - a second run changes nothing and keeps a password changed by hand;
 - with `NODE_ENV=production` and the variables, nothing is created;
 - without the variables, nothing is created and a warning is logged;
-- the password appears in no log call (spy on `strapi.log`).
+- the password appears in no log call (spy on `strapi.log`);
+- with an invalid password (e.g. shorter than the schema's `minLength: 6`), the call resolves
+  without throwing, no user is created, and the exact `warn` message is logged with the password
+  in no log call.
 
 Live check: `docker compose` on PostgreSQL with the three variables set, JSON log lines for the
 grants and the account, then `POST /api/auth/local` and `GET /api/users/me?populate=role` with
@@ -178,5 +193,6 @@ Regression gate: all `tests/structure/*.sh`, `npm test`, `npm run build`, `npm r
   `development` (`@strapi/core` `configuration/index.js`), so a self-hosted `strapi start`
   without `NODE_ENV` would create the account if the variables were set: the variables belong
   only in local env files, never in a deployment's configuration.
-- **`role.find` exposure.** Any logged-in `auteur`/`administrateur` can list role names and
-  descriptions; nothing sensitive is stored there.
+- **`role.find` exposure.** Any logged-in `auteur`/`administrateur` can list every role's name,
+  type, description and `nb_users` (a per-role user count) via `GET /api/users-permissions/roles`;
+  accepted as low risk — nothing sensitive is stored there.

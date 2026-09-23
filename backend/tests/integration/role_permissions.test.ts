@@ -14,6 +14,9 @@ const USER_WRITE_ACTIONS = [
   'plugin::users-permissions.user.update',
   'plugin::users-permissions.user.create',
   'plugin::users-permissions.user.destroy',
+  'plugin::users-permissions.role.createRole',
+  'plugin::users-permissions.role.updateRole',
+  'plugin::users-permissions.role.deleteRole',
 ];
 
 let strapi: Core.Strapi;

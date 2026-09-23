@@ -16,7 +16,7 @@
 - Test-first: every test is run and seen failing for the expected reason before the implementation is written (constitution Principe I).
 - Node is not on PATH: `export PATH=/tmp/claude-1000/-project-devops2/f0c0f41e-6d12-45e7-a390-b175e6f2473f/scratchpad/node-v22.12.0-linux-x64/bin:$PATH`
 - Permission actions: `plugin::users-permissions.user.me`, `plugin::users-permissions.role.find` for `auteur` and `administrateur`; nothing for `repondant`.
-- Forbidden for every business role: `plugin::users-permissions.user.update`, `plugin::users-permissions.user.create`, `plugin::users-permissions.user.destroy`.
+- Forbidden for every business role: `plugin::users-permissions.user.update`, `plugin::users-permissions.user.create`, `plugin::users-permissions.user.destroy`, `plugin::users-permissions.role.createRole`, `plugin::users-permissions.role.updateRole`, `plugin::users-permissions.role.deleteRole`.
 - Environment variables: `DEV_AUTEUR_EMAIL`, `DEV_AUTEUR_PASSWORD`, `DEV_AUTEUR_NOM`; default `nom` is `Auteur de test`.
 - Log messages (exact): `Granted "<action>" to role "<type>"`, `Skipped unknown action "<action>" for role "<type>"`, `Skipped permissions of missing role "<type>"`, `Dev auteur account skipped: DEV_AUTEUR_EMAIL/DEV_AUTEUR_PASSWORD not set`, `Dev auteur account "<email>" already exists`, `Created dev auteur account "<email>"`.
 - The dev account password never appears in any log call. No real credential is committed (Principe IV); `.env`, `.env.local` and `.superpowers/` are never staged.

@@ -109,6 +109,31 @@ describe('development auteur account (T062, quickstart Scénario 1)', () => {
     warn.mockRestore();
   });
 
+  it('does not crash boot and never logs the password when account creation fails', async () => {
+    const spies = (['info', 'warn', 'error', 'debug'] as const).map((level) =>
+      jest.spyOn(strapi.log, level),
+    );
+
+    await expect(
+      ensureDevAuteurAccount(
+        strapi,
+        devEnv('invalid.auteur@example.test', { DEV_AUTEUR_PASSWORD: 'Sh0rt' }),
+      ),
+    ).resolves.toBeUndefined();
+
+    expect(await findUser('invalid.auteur@example.test')).toBeNull();
+    const warnCalls = spies[1].mock.calls;
+    expect(warnCalls).toContainEqual([
+      expect.stringMatching(/^Dev auteur account "invalid\.auteur@example\.test" not created: .+$/),
+    ]);
+    warnCalls.forEach((call) => {
+      call.forEach((arg) => expect(typeof arg).toBe('string'));
+    });
+    const logged = JSON.stringify(spies.flatMap((spy) => spy.mock.calls));
+    expect(logged).not.toContain('Sh0rt');
+    spies.forEach((spy) => spy.mockRestore());
+  });
+
   it('never logs the password', async () => {
     const spies = (['info', 'warn', 'error', 'debug'] as const).map((level) =>
       jest.spyOn(strapi.log, level),

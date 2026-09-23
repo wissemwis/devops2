@@ -21,18 +21,23 @@ export async function ensureDevAuteurAccount(
     return;
   }
   const auteur = await strapi.db.query(ROLE_UID).findOne({ where: { type: 'auteur' } });
-  await strapi
-    .plugin('users-permissions')
-    .service('user')
-    .add({
-      username: email,
-      email,
-      password,
-      nom: env.DEV_AUTEUR_NOM || DEFAULT_NOM,
-      provider: 'local',
-      confirmed: true,
-      blocked: false,
-      role: auteur.id,
-    });
+  try {
+    await strapi
+      .plugin('users-permissions')
+      .service('user')
+      .add({
+        username: email,
+        email,
+        password,
+        nom: env.DEV_AUTEUR_NOM || DEFAULT_NOM,
+        provider: 'local',
+        confirmed: true,
+        blocked: false,
+        role: auteur.id,
+      });
+  } catch (err) {
+    strapi.log.warn(`Dev auteur account "${email}" not created: ${(err as Error).message}`);
+    return;
+  }
   strapi.log.info(`Created dev auteur account "${email}"`);
 }

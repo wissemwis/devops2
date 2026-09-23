@@ -4,12 +4,13 @@ import { createStrapi } from '@strapi/strapi';
 import type { Core } from '@strapi/strapi';
 
 const appDir = path.resolve(__dirname, '..', '..');
-const TEST_DATABASE_FILE = path.join(appDir, '.tmp', 'test.db');
+const TEST_DATABASE_FILENAME = `.tmp/test-${process.env.JEST_WORKER_ID ?? '1'}.db`;
+const TEST_DATABASE_FILE = path.join(appDir, TEST_DATABASE_FILENAME);
 
 const TEST_ENV = {
   NODE_ENV: 'test',
   DATABASE_CLIENT: 'sqlite',
-  DATABASE_FILENAME: '.tmp/test.db',
+  DATABASE_FILENAME: TEST_DATABASE_FILENAME,
   APP_KEYS: 'testKeyA,testKeyB',
   ADMIN_JWT_SECRET: 'test-admin-jwt-secret',
   API_TOKEN_SALT: 'test-api-token-salt',

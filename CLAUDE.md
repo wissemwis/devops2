@@ -52,7 +52,9 @@ T001–T010 still describe how those tasks were built and reviewed.
   User has the native users-permissions `role` relation plus a required `nom`; FR-016 roles
   `auteur`/`repondant`/`administrateur` are created at boot and public registration is closed
   (T061). Role permissions come from `ROLE_PERMISSIONS` in `src/bootstrap/permissions.ts`
-  (granted at boot, additive; `auteur`/`administrateur`: `users/me`, `role.find`); in development,
+  (granted at boot, additive; `auteur`: `users/me`, `role.find`, questionnaire
+  `create`/`publish`/`close`, question `add`; `administrateur`: `users/me`, `role.find`,
+  questionnaire `close`; `repondant`: none); in development,
   `DEV_AUTEUR_EMAIL`/`DEV_AUTEUR_PASSWORD` create a test `auteur` account at boot (T062).
   `GET /health` → 200 `{"status":"ok"}` / 503 `{"status":"degraded","reason":...}`, registered at the bare `/health`
   path via `strapi.server.routes()` in `src/index.ts` as well as `/api/health` (T008).

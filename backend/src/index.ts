@@ -8,6 +8,7 @@ import {
   subscribeDefaultRespondentRole,
 } from './bootstrap/roles';
 import { grantRolePermissions } from './bootstrap/permissions';
+import { ensureDevAuteurAccount } from './bootstrap/dev-account';
 
 export default {
   /**
@@ -51,5 +52,6 @@ export default {
     await closePublicRegistration(strapi);
     await setDefaultRespondentRole(strapi);
     subscribeDefaultRespondentRole(strapi);
+    await ensureDevAuteurAccount(strapi);
   },
 };

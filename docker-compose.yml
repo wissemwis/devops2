@@ -99,6 +99,9 @@ services:
       # Falls back to "http" — an unset/empty LOG_LEVEL would otherwise
       # resolve to "" and make winston log everything (final-fix wave B3).
       LOG_LEVEL: ${LOG_LEVEL:-http}
+      DEV_AUTEUR_EMAIL: ${DEV_AUTEUR_EMAIL:-}
+      DEV_AUTEUR_PASSWORD: ${DEV_AUTEUR_PASSWORD:-}
+      DEV_AUTEUR_NOM: ${DEV_AUTEUR_NOM:-}
     depends_on:
       db:
         condition: service_healthy

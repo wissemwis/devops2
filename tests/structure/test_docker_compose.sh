@@ -146,6 +146,10 @@ check_model "data['services']['backend']['environment'].get('DATABASE_HOST') == 
     "backend sets DATABASE_HOST=db"
 check_model "data['services']['backend']['environment'].get('DATABASE_URL', '__missing__') == ''" \
     "backend neutralises DATABASE_URL (empty) so DATABASE_HOST=db is not overridden by database.ts's connectionString precedence"
+for var in DEV_AUTEUR_EMAIL DEV_AUTEUR_PASSWORD DEV_AUTEUR_NOM; do
+    check_model "data['services']['backend']['environment'].get('$var', '__missing__') == ''" \
+        "backend passes $var through, empty when unset (T062)"
+done
 check_model "data['services']['backend'].get('depends_on', {}).get('db', {}).get('condition') == 'service_healthy'" \
     "backend depends_on db with condition service_healthy"
 check_model "data['services']['backend'].get('depends_on', {}).get('init', {}).get('condition') == 'service_completed_successfully'" \

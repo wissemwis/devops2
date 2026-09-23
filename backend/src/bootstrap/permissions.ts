@@ -4,7 +4,11 @@ import { BUSINESS_ROLES } from './roles';
 export type BusinessRoleType = (typeof BUSINESS_ROLES)[number]['type'];
 
 export const ROLE_PERMISSIONS: Record<BusinessRoleType, readonly string[]> = {
-  auteur: ['plugin::users-permissions.user.me', 'plugin::users-permissions.role.find'],
+  auteur: [
+    'plugin::users-permissions.user.me',
+    'plugin::users-permissions.role.find',
+    'api::questionnaire.questionnaire.create',
+  ],
   repondant: [],
   administrateur: ['plugin::users-permissions.user.me', 'plugin::users-permissions.role.find'],
 };

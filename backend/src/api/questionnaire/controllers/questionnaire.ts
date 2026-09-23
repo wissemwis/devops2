@@ -1,3 +1,27 @@
 import { factories } from '@strapi/strapi';
 
-export default factories.createCoreController('api::questionnaire.questionnaire');
+const UID = 'api::questionnaire.questionnaire';
+
+type Body = { data?: Record<string, unknown> };
+
+const baseController = factories.createCoreController(UID);
+
+export default factories.createCoreController(UID, ({ strapi }) => {
+  const { sanitizeInput, sanitizeOutput, transformResponse } = baseController({ strapi });
+
+  return {
+    async create(ctx) {
+      const input = (await sanitizeInput((ctx.request.body as Body)?.data ?? {}, ctx)) as Record<
+        string,
+        unknown
+      >;
+      const { statut: _statut, auteur: _auteur, ...fields } = input;
+      const created = await strapi.documents(UID).create({
+        data: { ...fields, statut: 'brouillon', auteur: ctx.state.user.id } as never,
+      });
+      const output = await sanitizeOutput(created, ctx);
+      ctx.status = 201;
+      return transformResponse(output);
+    },
+  };
+});

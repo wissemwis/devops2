@@ -103,6 +103,11 @@ export async function onRequestError(
 - Next.js calls `onRequestError` for errors in server components, route handlers, server
   actions and the proxy; the file lives at `frontend/instrumentation.ts` (no `src/` directory
   in this project).
+- Request errors in the Edge runtime are not logged: the hook returns early when
+  `process.env.NEXT_RUNTIME === 'edge'` and loads `./lib/logger` (Node-only, uses
+  `process.stdout`) with a dynamic `import()` so it is never bundled into the Edge build; Next
+  16's proxy runs on the `nodejs` runtime by default, so this does not affect proxy error
+  logging in practice.
 
 ### 4.4 Compose — `docker-compose.yml`
 
@@ -170,6 +175,7 @@ and `/health`, as it already does for the backend.
   `path`, `routePath`, `routeType` and `error.message = 'boom'`, and neither `secret-jwt` nor
   `secret-cookie` appears in it;
 - a non-`Error` value (`'plain failure'`) is logged as that string.
+- with `NEXT_RUNTIME=edge`, `onRequestError` writes nothing to stdout.
 
 `tests/integration/health.test.ts`:
 - `GET()` returns status `200` and JSON body `{ "status": "ok" }`;

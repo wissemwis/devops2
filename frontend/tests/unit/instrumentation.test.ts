@@ -5,13 +5,21 @@ type RequestInfo = Parameters<typeof onRequestError>[1];
 type ErrorContext = Parameters<typeof onRequestError>[2];
 
 let write: ReturnType<typeof vi.spyOn>;
+let originalNextRuntime: string | undefined;
 
 beforeEach(() => {
   write = vi.spyOn(process.stdout, 'write').mockImplementation(() => true);
+  originalNextRuntime = process.env.NEXT_RUNTIME;
+  process.env.NEXT_RUNTIME = 'nodejs';
 });
 
 afterEach(() => {
   write.mockRestore();
+  if (originalNextRuntime === undefined) {
+    delete process.env.NEXT_RUNTIME;
+  } else {
+    process.env.NEXT_RUNTIME = originalNextRuntime;
+  }
 });
 
 const request: RequestInfo = {
@@ -53,5 +61,13 @@ describe('onRequestError (T060, Principe V)', () => {
     await onRequestError('plain failure', request, context);
 
     expect(JSON.parse(logged()[0]).error).toBe('plain failure');
+  });
+
+  it('writes nothing to stdout in the edge runtime', async () => {
+    process.env.NEXT_RUNTIME = 'edge';
+
+    await onRequestError(new Error('boom'), request, context);
+
+    expect(write).not.toHaveBeenCalled();
   });
 });

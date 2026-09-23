@@ -1,0 +1,30 @@
+{
+  "kind": "collectionType",
+  "collectionName": "questions",
+  "info": {
+    "singularName": "question",
+    "pluralName": "questions",
+    "displayName": "Question"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "attributes": {
+    "texte": { "type": "string", "required": true },
+    "type": {
+      "type": "enumeration",
+      "enum": ["likert", "choix_multiple", "texte_libre"],
+      "required": true
+    },
+    "position": { "type": "integer", "required": true, "min": 1 },
+    "obligatoire": { "type": "boolean", "default": false, "required": true },
+    "options": { "type": "json" },
+    "image": { "type": "media", "multiple": false, "allowedTypes": ["images"] },
+    "questionnaire": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::questionnaire.questionnaire",
+      "inversedBy": "questions"
+    }
+  }
+}

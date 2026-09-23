@@ -15,28 +15,40 @@ jeton d'invitation signé en query string pour l'accès à un questionnaire priv
 
 ## Questionnaires
 
+> **Amendement 2026-09-23 (US1 backend, T011–T021)** — s'applique à toute l'API :
+> - Corps au format natif Strapi 5 : requête `{ "data": { … } }`, réponse `{ "data": { "documentId": …, … }, "meta": {} }`,
+>   erreur `{ "data": null, "error": { "status", "name", "message", "details" } }`.
+> - `:id` est le `documentId` Strapi (chaîne).
+> - Valeurs d'énumération en codes ASCII : `statut` ∈ `brouillon`/`publie`/`ferme`, `visibilite` ∈ `publique`/`privee`.
+> - Sans authentification, ou avec un rôle qui n'a pas l'action : `403`. Auteur non propriétaire : `403`.
+>   Questionnaire inconnu : `404`. Transition impossible depuis le statut courant : `409`.
+
 ### POST /api/questionnaires
 
 - Auth : auteur.
-- Body: `{ "titre": string, "description"?: string, "visibilite": "publique"|"privée" }`
-- Réponse `201`: questionnaire créé, `statut: "brouillon"`. (FR-001)
+- Body: `{ "data": { "titre": string, "description"?: string, "visibilite": "publique"|"privee" } }`
+- Réponse `201`: questionnaire créé, `statut` toujours `brouillon`, `auteur` = appelant. (FR-001)
+- `400` si `titre` manque ou `visibilite` invalide.
 
 ### PATCH /api/questionnaires/:id/questions
 
 - Auth : auteur (propriétaire).
-- Body: `{ "texte": string, "type": "likert"|"choix_multiple"|"texte_libre", "position": int, "obligatoire": bool, "image"?: mediaId }`
+- Body: `{ "data": { "texte": string, "type": "likert"|"choix_multiple"|"texte_libre", "position": int, "obligatoire"?: bool, "options"?: string[], "image"?: mediaId } }`
+- `options` requis (≥ 2 libellés distincts) pour `choix_multiple`, interdit sinon.
 - Réponse `200`: question ajoutée. (FR-002, FR-003)
+- `400` si position déjà prise. `409` si le questionnaire n'est pas `brouillon`.
 
 ### POST /api/questionnaires/:id/publish
 
 - Auth : auteur (propriétaire).
-- Précondition : au moins une question existe, sinon `422` (Edge Case).
-- Réponse `200`: `statut: "publié"`. (FR-005)
+- `409` si pas `brouillon`. `422` sans question (Edge Case).
+- Réponse `200`: `statut: "publie"`. (FR-005)
 
 ### POST /api/questionnaires/:id/close
 
 - Auth : auteur (propriétaire) ou administrateur.
-- Réponse `200`: `statut: "fermé"`. Toute tentative ultérieure de réponse renvoie `403`. (FR-006)
+- `409` si pas `publie`.
+- Réponse `200`: `statut: "ferme"`. Toute tentative ultérieure de réponse renvoie `403`. (FR-006)
 
 ### GET /api/questionnaires/:id
 

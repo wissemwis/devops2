@@ -36,8 +36,8 @@ Un utilisateur créé sans rôle reçoit le rôle `repondant` (`default_role` et
 |---|---|---|
 | titre | string | requis |
 | description | text | optionnel |
-| statut | enum: brouillon, publié, fermé | requis, défaut `brouillon` (FR-005) |
-| visibilite | enum: publique, privée | requis (FR-004) |
+| statut | enum: brouillon, publie, ferme | requis, défaut `brouillon` (FR-005) |
+| visibilite | enum: publique, privee | requis (FR-004) |
 | auteur | relation → Utilisateur (many-to-one) | requis |
 | dateCreation | datetime | généré automatiquement |
 | dateModification | datetime | mis à jour automatiquement |
@@ -48,14 +48,21 @@ irréversible. Une réponse ne peut être créée/modifiée que si `statut = pub
 **Règle de validation** : un questionnaire ne peut passer à `publié` que s'il contient au moins
 une question (Edge Case §spec.md).
 
+**Amendement 2026-09-23 (US1 backend, T011–T021)** : les valeurs d'énumération sont des codes
+ASCII (`brouillon`/`publie`/`ferme`, `publique`/`privee`), cohérents avec les rôles (`repondant`) ;
+les libellés accentués relèvent de l'interface. Le brouillon/publication natif de Strapi est
+désactivé (`draftAndPublish: false`) : seul `statut` porte le cycle de vie. Une question
+`choix_multiple` porte ses choix dans `options` ; une réponse (US2) contiendra les libellés choisis.
+
 ## Question
 
 | Champ | Type | Règles |
 |---|---|---|
 | texte | string | requis |
 | type | enum: likert, choix_multiple, texte_libre | requis |
-| position | integer | requis, unique au sein d'un même questionnaire, détermine l'ordre |
+| position | integer | requis, entier ≥ 1, unique au sein d'un même questionnaire (vérifié à l'ajout), détermine l'ordre |
 | obligatoire | boolean | requis, défaut `false` |
+| options | JSON (liste de libellés) | requis pour `choix_multiple` : au moins 2 libellés distincts et non vides (après suppression des espaces) ; interdit pour `likert` et `texte_libre` |
 | image | media (optionnel) | format image standard (png/jpg/webp), taille max définie au niveau infra |
 | questionnaire | relation → Questionnaire (many-to-one) | requis |
 

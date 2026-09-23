@@ -21,6 +21,10 @@ de types `auteur`, `repondant`, `administrateur`. `nom` est ajouté par l'extens
 `backend/src/extensions/users-permissions/content-types/user/schema.json` ; `dateInscription`
 est le `createdAt` natif.
 
+Les comptes sont créés par un administrateur (panneau d'admin Strapi ; compte de test de
+développement : T062) ; l'inscription publique est fermée (`allow_register: false`, réappliqué
+à chaque démarrage par `backend/src/bootstrap/roles.ts`).
+
 ## Questionnaire
 
 | Champ | Type | Règles |

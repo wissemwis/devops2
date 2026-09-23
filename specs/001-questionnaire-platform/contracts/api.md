@@ -52,8 +52,8 @@ jeton d'invitation signé en query string pour l'accès à un questionnaire priv
 
 ### GET /api/questionnaires/:id
 
-- Auth : aucune si `visibilite: publique` et `statut: publié` ; jeton d'invitation requis si
-  `visibilite: privée` (FR-007, FR-008).
+- Auth : aucune si `visibilite: publique` et `statut: publie` ; jeton d'invitation requis si
+  `visibilite: privee` (FR-007, FR-008).
 - Réponse `200`: questionnaire + questions ordonnées par `position`.
 
 ### POST /api/questionnaires/:id/invitations

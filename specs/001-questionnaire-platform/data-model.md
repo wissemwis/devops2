@@ -42,10 +42,10 @@ Un utilisateur créé sans rôle reçoit le rôle `repondant` (`default_role` et
 | dateCreation | datetime | généré automatiquement |
 | dateModification | datetime | mis à jour automatiquement |
 
-**Transitions de statut** (FR-005, FR-006) : `brouillon → publié → fermé`, linéaire et
-irréversible. Une réponse ne peut être créée/modifiée que si `statut = publié` (FR-006).
+**Transitions de statut** (FR-005, FR-006) : `brouillon → publie → ferme`, linéaire et
+irréversible. Une réponse ne peut être créée/modifiée que si `statut = publie` (FR-006).
 
-**Règle de validation** : un questionnaire ne peut passer à `publié` que s'il contient au moins
+**Règle de validation** : un questionnaire ne peut passer à `publie` que s'il contient au moins
 une question (Edge Case §spec.md).
 
 **Amendement 2026-09-23 (US1 backend, T011–T021)** : les valeurs d'énumération sont des codes
@@ -74,9 +74,9 @@ Une `Réponse` regroupe l'ensemble des réponses individuelles d'un répondant �
 | Champ | Type | Règles |
 |---|---|---|
 | questionnaire | relation → Questionnaire (many-to-one) | requis |
-| nom | string | requis si `questionnaire.visibilite = privée` (FR-019), sinon absent |
-| prenom | string | requis si `questionnaire.visibilite = privée` (FR-019), sinon absent |
-| email | string | requis si `questionnaire.visibilite = privée` (FR-019), optionnel sinon (anonyme par défaut) |
+| nom | string | requis si `questionnaire.visibilite = privee` (FR-019), sinon absent |
+| prenom | string | requis si `questionnaire.visibilite = privee` (FR-019), sinon absent |
+| email | string | requis si `questionnaire.visibilite = privee` (FR-019), optionnel sinon (anonyme par défaut) |
 | statut | enum: en_cours, complète | requis, défaut `en_cours` (FR-009) |
 | dateSoumission | datetime | renseigné à la transition vers `complète` |
 | reponsesQuestions | relation → ReponseQuestion (one-to-many) | — |
@@ -106,7 +106,7 @@ pré-associée (FR-019), en amont de toute `Réponse`.
 
 | Champ | Type | Règles |
 |---|---|---|
-| questionnaire | relation → Questionnaire (many-to-one) | requis, `questionnaire.visibilite = privée` |
+| questionnaire | relation → Questionnaire (many-to-one) | requis, `questionnaire.visibilite = privee` |
 | nom, prenom, email | string | requis |
 | jeton | string, unique | signé, à usage unique par répondant |
 | statut | enum: envoyée, répondue | dérivé de l'existence d'une `Réponse` liée (calcul du "non-répondant", FR-015/FR-018) |

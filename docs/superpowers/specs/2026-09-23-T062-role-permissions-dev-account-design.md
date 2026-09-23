@@ -62,7 +62,12 @@ export const ROLE_PERMISSIONS: Record<BusinessRoleType, readonly string[]> = {
   repondant: [],
 };
 
-export async function grantRolePermissions(strapi: Core.Strapi): Promise<void>;
+export function listControllerActions(strapi: Core.Strapi): Set<string>;
+
+export async function grantRolePermissions(
+  strapi: Core.Strapi,
+  table: Record<BusinessRoleType, readonly string[]> = ROLE_PERMISSIONS,
+): Promise<void>;
 ```
 
 - `BusinessRoleType` is derived from `BUSINESS_ROLES` in `roles.ts`, so a role missing from the
@@ -98,6 +103,8 @@ export async function ensureDevAuteurAccount(
 - `env.NODE_ENV !== 'development'` → return, no log. `npm run develop` (hence
   `docker compose`) runs in `development`; Strapi Cloud runs in `production`; Jest runs in
   `test`. `env` is a parameter so tests do not mutate `process.env`.
+- The email is trimmed and lower-cased (users-permissions lower-cases the identifier at
+  login).
 - `DEV_AUTEUR_EMAIL` or `DEV_AUTEUR_PASSWORD` missing or empty → `warn`
   `Dev auteur account skipped: DEV_AUTEUR_EMAIL/DEV_AUTEUR_PASSWORD not set`, return.
 - A user with that email already exists → `info` `Dev auteur account "<email>" already exists`,
@@ -120,7 +127,8 @@ user is created).
 ### 4.4 Configuration and documentation
 
 - `.env.example`: `DEV_AUTEUR_EMAIL`, `DEV_AUTEUR_PASSWORD`, `DEV_AUTEUR_NOM` with empty
-  values and a note that they are read only in development.
+  values, no new comment (CLAUDE.md code conventions); the "development only" note goes in
+  `quickstart.md`.
 - `docker-compose.yml` `backend.environment`: `DEV_AUTEUR_EMAIL: ${DEV_AUTEUR_EMAIL:-}`,
   `DEV_AUTEUR_PASSWORD: ${DEV_AUTEUR_PASSWORD:-}`, `DEV_AUTEUR_NOM: ${DEV_AUTEUR_NOM:-}` (the
   stack still starts without them); `tests/structure/test_docker_compose.sh` updated if it
@@ -134,8 +142,9 @@ user is created).
 ## 5. Testing (Jest harness from T061, test-first)
 
 `backend/tests/integration/role_permissions.test.ts`:
-- after boot, `auteur` and `administrateur` hold exactly the table's actions as enabled
-  permissions, `repondant` holds none;
+- after boot, `auteur` and `administrateur` hold exactly the table's actions as permission
+  rows, `repondant` holds none; a `repondant` JWT gets `403` on `GET /api/users/me`;
+- an action unknown to the loaded app is skipped with a `warn` log and no row is created;
 - a permission added by hand to `auteur` is still present after `grantRolePermissions` runs
   again, and no duplicate row is created;
 - every action in `ROLE_PERMISSIONS` is a real controller action of the loaded app;
@@ -165,6 +174,9 @@ Regression gate: all `tests/structure/*.sh`, `npm test`, `npm run build`, `npm r
   authorization tests cover omissions.
 - **`NODE_ENV` on Strapi Cloud.** The dev account depends on Strapi Cloud not running in
   `development`; it runs `strapi start` with `NODE_ENV=production`. If the variables are set
-  there by mistake, nothing happens.
+  there by mistake, nothing happens. Strapi itself defaults an unset `NODE_ENV` to
+  `development` (`@strapi/core` `configuration/index.js`), so a self-hosted `strapi start`
+  without `NODE_ENV` would create the account if the variables were set: the variables belong
+  only in local env files, never in a deployment's configuration.
 - **`role.find` exposure.** Any logged-in `auteur`/`administrateur` can list role names and
   descriptions; nothing sensitive is stored there.

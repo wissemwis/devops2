@@ -76,14 +76,18 @@ export const logger: Record<LogLevel, (message: string, fields?: LogFields) => v
 - Each call writes exactly one line to `process.stdout`: `JSON.stringify({ ...fields, level,
   message, timestamp })` + `\n`, where `timestamp` is `new Date().toISOString()`. Core keys are
   written last, so a field named `level`, `message` or `timestamp` never overrides them.
-- A call never throws. If serialising the entry fails (a circular field, a `BigInt` field), the
-  line written instead is `JSON.stringify({ level, message, timestamp, logError:
-  <the stringify error's message> })` — still one valid JSON line, still carrying the original
-  level, message and timestamp.
+- A call never throws. Field serialisation and `JSON.stringify(entry)` both run inside the same
+  try/catch; if either fails (a circular field, a `BigInt` field), the line written instead is
+  `JSON.stringify({ level, message, timestamp, logError: <the stringify error's message> })` —
+  still one valid JSON line, still carrying the original level, message and timestamp.
 - A field whose value is an `Error` is serialised as `{ name, message, stack }` (plain
   `JSON.stringify` would produce `{}`). When the `Error` has a `cause`, it is included as
-  `cause`, serialised the same way (recursively, if the cause is itself an `Error`). When the
-  `Error` carries a string `digest` property (Next.js stamps `err.digest` on render errors), it
+  `cause`, serialised the same way (recursively, if the cause is itself an `Error`), tracking
+  visited `Error`s so a self-referencing or cyclic `cause` chain (`e.cause = e`, or
+  `a.cause = b; b.cause = a`) terminates instead of overflowing the call stack: an `Error`
+  already visited in the current chain serialises to the string `'[Circular]'` instead of
+  recursing again. When the `Error` carries a string `digest` property (Next.js stamps
+  `err.digest` on render errors), it
   is copied to `digest`.
 - Severity order follows winston's npm levels as the backend does: `error` (0) < `warn` (1) <
   `info` (2) < `debug` (3). A call is written when its level is at or below the threshold read
@@ -179,6 +183,9 @@ and `/health`, as it already does for the backend.
 - an `Error` field with a string `digest` property becomes `{ ..., digest: 'abc123' }`;
 - a circular field, and separately a `BigInt` field, each produce exactly one valid JSON line
   with the right `level`/`message` and a `logError`, and the call does not throw;
+- an `Error` whose `cause` is itself (`e.cause = e`), and separately a two-`Error` cyclic
+  `cause` chain (`a.cause = b; b.cause = a`), each produce exactly one valid JSON line without
+  throwing, where the repeated `Error` serialises to `'[Circular]'` instead of recursing again;
 - `LOG_LEVEL=warn`: `warn` and `error` are written, `info` and `debug` are not;
 - `LOG_LEVEL` unset, and `LOG_LEVEL=http`: `info` is written, `debug` is not.
 

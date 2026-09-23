@@ -1,7 +1,12 @@
 import type { Core } from '@strapi/strapi';
 
 import healthController from './api/health/controllers/health';
-import { closePublicRegistration, ensureBusinessRoles } from './bootstrap/roles';
+import {
+  closePublicRegistration,
+  ensureBusinessRoles,
+  setDefaultRespondentRole,
+  subscribeDefaultRespondentRole,
+} from './bootstrap/roles';
 
 export default {
   /**
@@ -42,5 +47,7 @@ export default {
   async bootstrap({ strapi }: { strapi: Core.Strapi }) {
     await ensureBusinessRoles(strapi);
     await closePublicRegistration(strapi);
+    await setDefaultRespondentRole(strapi);
+    subscribeDefaultRespondentRole(strapi);
   },
 };

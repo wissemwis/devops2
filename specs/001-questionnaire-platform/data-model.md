@@ -25,6 +25,9 @@ Les comptes sont créés par un administrateur (panneau d'admin Strapi ; compte 
 développement : T062) ; l'inscription publique est fermée (`allow_register: false`, réappliqué
 à chaque démarrage par `backend/src/bootstrap/roles.ts`).
 
+Un utilisateur créé sans rôle reçoit le rôle `repondant` (`default_role` et un cycle de vie
+`beforeCreate` dans `backend/src/bootstrap/roles.ts`).
+
 ## Questionnaire
 
 | Champ | Type | Règles |

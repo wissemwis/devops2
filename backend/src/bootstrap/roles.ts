@@ -37,3 +37,25 @@ export async function closePublicRegistration(strapi: Core.Strapi): Promise<void
   await store.set({ key: 'advanced', value: { ...advanced, allow_register: false } });
   strapi.log.info('Closed public registration (users-permissions allow_register=false)');
 }
+
+const DEFAULT_ROLE_TYPE = 'repondant';
+
+export async function setDefaultRespondentRole(strapi: Core.Strapi): Promise<void> {
+  const store = strapi.store({ type: 'plugin', name: 'users-permissions' });
+  const advanced = ((await store.get({ key: 'advanced' })) ?? {}) as Record<string, unknown>;
+  if (advanced.default_role === DEFAULT_ROLE_TYPE) return;
+  await store.set({ key: 'advanced', value: { ...advanced, default_role: DEFAULT_ROLE_TYPE } });
+  strapi.log.info(`Set users-permissions default_role to "${DEFAULT_ROLE_TYPE}"`);
+}
+
+export function subscribeDefaultRespondentRole(strapi: Core.Strapi): void {
+  strapi.db.lifecycles.subscribe({
+    models: ['plugin::users-permissions.user'],
+    async beforeCreate(event) {
+      const { data } = event.params;
+      if (data.role) return;
+      const role = await strapi.db.query(ROLE_UID).findOne({ where: { type: DEFAULT_ROLE_TYPE } });
+      if (role) data.role = role.id;
+    },
+  });
+}

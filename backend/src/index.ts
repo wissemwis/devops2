@@ -1,6 +1,12 @@
 import type { Core } from '@strapi/strapi';
 
 import healthController from './api/health/controllers/health';
+import {
+  closePublicRegistration,
+  ensureBusinessRoles,
+  setDefaultRespondentRole,
+  subscribeDefaultRespondentRole,
+} from './bootstrap/roles';
 
 export default {
   /**
@@ -38,12 +44,10 @@ export default {
     ]);
   },
 
-  /**
-   * An asynchronous bootstrap function that runs before
-   * your application gets started.
-   *
-   * This gives you an opportunity to set up your data model,
-   * run jobs, or perform some special logic.
-   */
-  bootstrap(/* { strapi }: { strapi: Core.Strapi } */) {},
+  async bootstrap({ strapi }: { strapi: Core.Strapi }) {
+    await ensureBusinessRoles(strapi);
+    await closePublicRegistration(strapi);
+    await setDefaultRespondentRole(strapi);
+    subscribeDefaultRespondentRole(strapi);
+  },
 };

@@ -15,7 +15,8 @@
     "upgrade:dry": "npx @strapi/upgrade latest --dry",
     "lint": "eslint .",
     "format": "prettier --write . --ignore-path ../.prettierignore",
-    "format:check": "prettier --check . --ignore-path ../.prettierignore"
+    "format:check": "prettier --check . --ignore-path ../.prettierignore",
+    "test": "jest"
   },
   "dependencies": {
     "@strapi/database": "5.54.0",
@@ -32,11 +33,16 @@
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
+    "@types/jest": "^29.5.14",
     "@types/node": "^20",
     "@types/react": "^18",
     "@types/react-dom": "^18",
+    "@types/supertest": "^6.0.3",
     "eslint": "^10.11.0",
+    "jest": "^29.7.0",
     "prettier": "^3.9.8",
+    "supertest": "^7.3.0",
+    "ts-jest": "^29.4.12",
     "typescript": "^5",
     "typescript-eslint": "^8.70.0"
   },
@@ -47,5 +53,15 @@
   "strapi": {
     "uuid": "fd32bc38-5620-4472-8d87-23b4c4f1b2fb",
     "installId": "6ddd3a2308c510fb5a20efc676e1541ba824c269ee2864d1091a443c50120a93"
+  },
+  "jest": {
+    "preset": "ts-jest",
+    "testEnvironment": "node",
+    "testMatch": [
+      "<rootDir>/tests/**/*.test.ts"
+    ],
+    "globalSetup": "<rootDir>/tests/helpers/global-setup.ts",
+    "maxWorkers": 1,
+    "testTimeout": 120000
   }
 }

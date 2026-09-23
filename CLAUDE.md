@@ -34,15 +34,24 @@ that made it binding are archived, with documentation, in `extension.save/` — 
 `extension.save/README.md`. Nothing in that folder is active. The `tasks.md` annotations of
 T001–T010 still describe how those tasks were built and reviewed.
 
+## Code conventions
+
+- **No comments in code.** Do not add comments to source, test, configuration or script files
+  (`//`, `/* */`, JSDoc, `#` in shell/YAML, etc.) — including in code written into
+  implementation plans. Clear names, small functions and tests carry the intent; the *why*
+  goes in commit messages, `tasks.md` annotations and the spec/plan documents. Existing
+  comments may stay; when a change makes one wrong, delete it rather than rewrite it.
+
 ## Current state
 
-**T001–T010** of 59 tasks in `specs/001-questionnaire-platform/tasks.md` are done (each with a
-recorded reviewer-subagent verdict). What exists today:
+**T001–T010** and **T061** of 76 tasks in `specs/001-questionnaire-platform/tasks.md` are done
+(each with a recorded reviewer-subagent verdict). What exists today:
 
 - `backend/` — Strapi 5 TypeScript project (`create-strapi-app@5.54.0`, T002). SQLite by default
   for local dev, PostgreSQL via `DATABASE_CLIENT=postgres` with the `pg` driver installed (T006).
-  User content-type extended with a business `role` enum (T007). `GET /health` → 200
-  `{"status":"ok"}` / 503 `{"status":"degraded","reason":...}`, registered at the bare `/health`
+  User has the native users-permissions `role` relation plus a required `nom`; FR-016 roles
+  `auteur`/`repondant`/`administrateur` are created at boot and public registration is closed
+  (T061). `GET /health` → 200 `{"status":"ok"}` / 503 `{"status":"degraded","reason":...}`, registered at the bare `/health`
   path via `strapi.server.routes()` in `src/index.ts` as well as `/api/health` (T008).
   Structured JSON logs on stdout via `config/logger.ts`, level from `LOG_LEVEL` (default `http`)
   (T009); Strapi's startup banner is still plain `console.log`, not JSON.
@@ -59,16 +68,11 @@ recorded reviewer-subagent verdict). What exists today:
   `backend/`/`frontend/` on the host (the empty node_modules mountpoint directories that Docker's
   daemon creates for the named volumes are the sole, expected exception — no real content lands
   there). No Dockerfiles yet (T055). `cp .env.example .env && docker compose up -d`.
-- Tests — so far only shell scripts under `tests/structure/*.sh` (run each one; all should pass).
-  No Jest/contract/integration test harness exists yet (starts with T011+).
+- Tests — `tests/structure/*.sh` shell scripts, plus a Jest + Supertest harness in `backend/`
+  (`npm test`; in-process Strapi on a throwaway SQLite file, `tests/helpers/strapi.ts`, introduced
+  by T061).
 
-**Open risk carried forward from T007** (see its `tasks.md` annotation): the custom `role` enum
-overwrites Strapi's built-in `users-permissions` `role` relation, which breaks authenticated
-permission resolution. Resolve it (rename the field, or amend `data-model.md` + `plan.md`
-Complexity Tracking) before any login/auth/permission-gated task. Direction chosen by the project
-owner on 2026-09-23 (T011 brainstorming, not yet written into the spec): FR-016 roles become
-native `users-permissions` roles and the T007 enum extension is undone — see
-`extension.save/superpowers-workspace/pending-brainstorm-T011.md`.
+The T007 `role` enum risk is resolved by T061.
 
 ## Source of truth for requirements and design
 

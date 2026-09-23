@@ -6,6 +6,19 @@ const UID = 'api::questionnaire.questionnaire';
 
 type Body = { data?: Record<string, unknown> };
 
+const CREATE_FIELDS = ['titre', 'description', 'visibilite'] as const;
+
+function pick<T extends readonly string[]>(
+  input: Record<string, unknown>,
+  keys: T,
+): Record<string, unknown> {
+  const result: Record<string, unknown> = {};
+  for (const key of keys) {
+    if (key in input) result[key] = input[key];
+  }
+  return result;
+}
+
 const baseController = factories.createCoreController(UID);
 
 export default factories.createCoreController(UID, ({ strapi }) => {
@@ -17,7 +30,7 @@ export default factories.createCoreController(UID, ({ strapi }) => {
         string,
         unknown
       >;
-      const { statut: _statut, auteur: _auteur, ...fields } = input;
+      const fields = pick(input, CREATE_FIELDS);
       const created = await strapi.documents(UID).create({
         data: { ...fields, statut: 'brouillon', auteur: ctx.state.user.id } as never,
       });

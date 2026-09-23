@@ -8,6 +8,19 @@ const UID = 'api::question.question';
 
 type Body = { data?: Record<string, unknown> };
 
+const ADD_FIELDS = ['texte', 'type', 'position', 'obligatoire', 'options', 'image'] as const;
+
+function pick<T extends readonly string[]>(
+  input: Record<string, unknown>,
+  keys: T,
+): Record<string, unknown> {
+  const result: Record<string, unknown> = {};
+  for (const key of keys) {
+    if (key in input) result[key] = input[key];
+  }
+  return result;
+}
+
 const baseController = factories.createCoreController(UID);
 
 export default factories.createCoreController(UID, ({ strapi }) => {
@@ -23,7 +36,7 @@ export default factories.createCoreController(UID, ({ strapi }) => {
         string,
         unknown
       >;
-      const { questionnaire: _questionnaire, ...fields } = input;
+      const fields = pick(input, ADD_FIELDS);
       const invalidOptions = optionsError(String(fields.type), fields.options);
       if (invalidOptions) throw new errors.ValidationError(invalidOptions);
       if (positionTaken(Number(fields.position), questionnaire.positions)) {

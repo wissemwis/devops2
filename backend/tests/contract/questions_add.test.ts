@@ -142,4 +142,30 @@ describe('PATCH /api/questionnaires/:id/questions (T012, FR-002)', () => {
     expect(res.body.error.status).toBe(409);
     expect(res.body.error.message).toBe('questions can only be added to a brouillon questionnaire');
   });
+
+  it('ignores a spoofed questionnaire relation and a spoofed createdAt in the body', async () => {
+    const { user, jwt } = await createUserWithRole(strapi, 'auteur');
+    const questionnaire = await createQuestionnaire(strapi, user);
+    const { user: otherOwner } = await createUserWithRole(strapi, 'auteur');
+    const otherQuestionnaire = await createQuestionnaire(strapi, otherOwner);
+
+    const res = await patch(jwt, questionnaire.documentId, {
+      texte: 'Intégrité du corps de la requête',
+      type: 'texte_libre',
+      position: 1,
+      questionnaire: otherQuestionnaire.documentId,
+      createdAt: '2000-01-01T00:00:00.000Z',
+    });
+
+    expect(res.status).toBe(200);
+    expect(res.body.data.createdAt).not.toBe('2000-01-01T00:00:00.000Z');
+    const stored = await strapi.documents('api::question.question').findOne({
+      documentId: res.body.data.documentId,
+      populate: ['questionnaire'],
+    });
+    expect(
+      (stored as unknown as { questionnaire: { documentId: string } | null }).questionnaire
+        ?.documentId,
+    ).toBe(questionnaire.documentId);
+  });
 });

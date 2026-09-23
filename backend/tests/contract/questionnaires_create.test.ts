@@ -2,6 +2,7 @@ import request from 'supertest';
 import type { Core } from '@strapi/strapi';
 import { setupStrapi, teardownStrapi } from '../helpers/strapi';
 import { createUserWithRole } from '../helpers/users';
+import { addQuestion, createQuestionnaire } from '../helpers/questionnaires';
 
 let strapi: Core.Strapi;
 
@@ -93,5 +94,63 @@ describe('POST /api/questionnaires (T011, FR-001, FR-004)', () => {
     expect((await post(repondant, body)).status).toBe(403);
     expect((await post(administrateur, body)).status).toBe(403);
     expect((await post(null, body)).status).toBe(403);
+  });
+
+  it("does not move another auteur's question into the created questionnaire", async () => {
+    const { jwt } = await createUserWithRole(strapi, 'auteur');
+    const { user: otherOwner } = await createUserWithRole(strapi, 'auteur');
+    const otherQuestionnaire = await createQuestionnaire(strapi, otherOwner);
+    const otherQuestion = await addQuestion(strapi, otherQuestionnaire);
+
+    const res = await post(jwt, {
+      titre: 'Vol de question',
+      visibilite: 'publique',
+      questions: [otherQuestion.documentId],
+    });
+
+    expect(res.status).toBe(201);
+    const stored = await strapi.documents('api::question.question').findOne({
+      documentId: otherQuestion.documentId,
+      populate: ['questionnaire'],
+    });
+    expect(
+      (stored as unknown as { questionnaire: { documentId: string } | null }).questionnaire
+        ?.documentId,
+    ).toBe(otherQuestionnaire.documentId);
+  });
+
+  it("still keeps another auteur's question in place even when the caller role can read questions", async () => {
+    const { jwt } = await createUserWithRole(strapi, 'auteur');
+    const { user: otherOwner } = await createUserWithRole(strapi, 'auteur');
+    const otherQuestionnaire = await createQuestionnaire(strapi, otherOwner);
+    const otherQuestion = await addQuestion(strapi, otherQuestionnaire);
+    const role = await strapi.db
+      .query('plugin::users-permissions.role')
+      .findOne({ where: { type: 'auteur' } });
+    await strapi.db.query('plugin::users-permissions.permission').create({
+      data: { action: 'api::question.question.find', role: role.id },
+    });
+
+    try {
+      const res = await post(jwt, {
+        titre: 'Vol de question, permission accordée',
+        visibilite: 'publique',
+        questions: [otherQuestion.documentId],
+      });
+
+      expect(res.status).toBe(201);
+      const stored = await strapi.documents('api::question.question').findOne({
+        documentId: otherQuestion.documentId,
+        populate: ['questionnaire'],
+      });
+      expect(
+        (stored as unknown as { questionnaire: { documentId: string } | null }).questionnaire
+          ?.documentId,
+      ).toBe(otherQuestionnaire.documentId);
+    } finally {
+      await strapi.db.query('plugin::users-permissions.permission').deleteMany({
+        where: { action: 'api::question.question.find', role: role.id },
+      });
+    }
   });
 });

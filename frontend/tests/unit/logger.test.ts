@@ -138,4 +138,37 @@ describe('frontend JSON logger (T060, Principe V)', () => {
     expect(typeof entry.timestamp).toBe('string');
     expect(typeof entry.logError).toBe('string');
   });
+
+  it('never throws on a self-referencing Error cause, and marks the repeat', () => {
+    const failure = new Error('self loop') as Error & { cause?: unknown };
+    failure.cause = failure;
+
+    expect(() => logger.error('cycle', { error: failure })).not.toThrow();
+
+    expect(lines()).toHaveLength(1);
+    const [entry] = entries();
+    const error = entry.error as Record<string, unknown>;
+    expect(error.name).toBe('Error');
+    expect(error.message).toBe('self loop');
+    expect(error.cause).toBe('[Circular]');
+  });
+
+  it('never throws on a cyclic Error cause chain, and marks the repeat', () => {
+    const a = new Error('a') as Error & { cause?: unknown };
+    const b = new Error('b') as Error & { cause?: unknown };
+    a.cause = b;
+    b.cause = a;
+
+    expect(() => logger.error('cycle', { error: a })).not.toThrow();
+
+    expect(lines()).toHaveLength(1);
+    const [entry] = entries();
+    const error = entry.error as Record<string, unknown>;
+    expect(error.name).toBe('Error');
+    expect(error.message).toBe('a');
+    const cause = error.cause as Record<string, unknown>;
+    expect(cause.name).toBe('Error');
+    expect(cause.message).toBe('b');
+    expect(cause.cause).toBe('[Circular]');
+  });
 });

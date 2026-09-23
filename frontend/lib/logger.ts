@@ -13,11 +13,13 @@ function threshold(): number {
   return SEVERITY[isLogLevel(configured) ? configured : DEFAULT_LEVEL];
 }
 
-function serialise(value: unknown): unknown {
+function serialise(value: unknown, seen: WeakSet<Error> = new WeakSet()): unknown {
   if (value instanceof Error) {
+    if (seen.has(value)) return '[Circular]';
+    seen.add(value);
     const result: LogFields = { name: value.name, message: value.message, stack: value.stack };
     if (value.cause !== undefined) {
-      result.cause = serialise(value.cause);
+      result.cause = serialise(value.cause, seen);
     }
     const digest = (value as Error & { digest?: unknown }).digest;
     if (typeof digest === 'string') {
@@ -30,13 +32,13 @@ function serialise(value: unknown): unknown {
 
 function write(level: LogLevel, message: string, fields: LogFields = {}): void {
   if (SEVERITY[level] > threshold()) return;
-  const extra = Object.fromEntries(
-    Object.entries(fields).map(([key, value]) => [key, serialise(value)]),
-  );
   const timestamp = new Date().toISOString();
-  const entry = { ...extra, level, message, timestamp };
   let line: string;
   try {
+    const extra = Object.fromEntries(
+      Object.entries(fields).map(([key, value]) => [key, serialise(value)]),
+    );
+    const entry = { ...extra, level, message, timestamp };
     line = JSON.stringify(entry);
   } catch (error) {
     line = JSON.stringify({

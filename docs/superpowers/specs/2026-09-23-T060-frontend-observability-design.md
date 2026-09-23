@@ -1,6 +1,6 @@
 # T060 (Jira D2-70) — Frontend health endpoint and structured JSON logs
 
-**Date:** 2026-09-23 · **Status:** approved in brainstorming, pending written-spec review
+**Date:** 2026-09-23 · **Status:** approved (written spec reviewed by the owner on 2026-09-23)
 **Task:** `specs/001-questionnaire-platform/tasks.md` T060 (Phase 9 Convergence, CRITICAL) —
 "Expose a health endpoint (`GET /api/health` → `{"status":"ok"}`) and structured JSON logs on
 stdout for the Next.js frontend in `frontend/app/api/health/route.ts` and the frontend logging
@@ -76,8 +76,15 @@ export const logger: Record<LogLevel, (message: string, fields?: LogFields) => v
 - Each call writes exactly one line to `process.stdout`: `JSON.stringify({ ...fields, level,
   message, timestamp })` + `\n`, where `timestamp` is `new Date().toISOString()`. Core keys are
   written last, so a field named `level`, `message` or `timestamp` never overrides them.
+- A call never throws. If serialising the entry fails (a circular field, a `BigInt` field), the
+  line written instead is `JSON.stringify({ level, message, timestamp, logError:
+  <the stringify error's message> })` — still one valid JSON line, still carrying the original
+  level, message and timestamp.
 - A field whose value is an `Error` is serialised as `{ name, message, stack }` (plain
-  `JSON.stringify` would produce `{}`).
+  `JSON.stringify` would produce `{}`). When the `Error` has a `cause`, it is included as
+  `cause`, serialised the same way (recursively, if the cause is itself an `Error`). When the
+  `Error` carries a string `digest` property (Next.js stamps `err.digest` on render errors), it
+  is copied to `digest`.
 - Severity order follows winston's npm levels as the backend does: `error` (0) < `warn` (1) <
   `info` (2) < `debug` (3). A call is written when its level is at or below the threshold read
   from `LOG_LEVEL` at call time; an unset or unknown `LOG_LEVEL` (including the backend-only
@@ -96,8 +103,11 @@ export async function onRequestError(
 ```
 
 - Writes one `logger.error('Request failed', { method, path, routePath, routeType, error })`
-  line; `error` goes through the logger's `Error` serialisation (a non-`Error` value is logged
-  as `String(value)`).
+  line; `error` goes through the logger's `Error` serialisation, which carries `err.digest`
+  through when Next.js has set it. A non-`Error` value is logged safely instead of with
+  `String(value)`: a string is passed through unchanged; otherwise `JSON.stringify(value)` is
+  tried first and `Object.prototype.toString.call(value)` is the fallback if that throws (e.g.
+  `Object.create(null)`, which `String()` cannot coerce).
 - `request.headers` is never logged (cookies and `Authorization` carry session tokens —
   spirit of T065).
 - Next.js calls `onRequestError` for errors in server components, route handlers, server
@@ -165,6 +175,10 @@ and `/health`, as it already does for the backend.
 - extra fields are included; fields named `level`, `message`, `timestamp` do not override the
   core keys;
 - an `Error` field becomes `{ name, message, stack }`;
+- an `Error` field with an `Error` `cause` becomes `{ ..., cause: { name, message, stack } }`;
+- an `Error` field with a string `digest` property becomes `{ ..., digest: 'abc123' }`;
+- a circular field, and separately a `BigInt` field, each produce exactly one valid JSON line
+  with the right `level`/`message` and a `logError`, and the call does not throw;
 - `LOG_LEVEL=warn`: `warn` and `error` are written, `info` and `debug` are not;
 - `LOG_LEVEL` unset, and `LOG_LEVEL=http`: `info` is written, `debug` is not.
 
@@ -174,7 +188,10 @@ and `/health`, as it already does for the backend.
   routePath: '/q/[token]', routeType: 'render' })` writes one `error` line with `method`,
   `path`, `routePath`, `routeType` and `error.message = 'boom'`, and neither `secret-jwt` nor
   `secret-cookie` appears in it;
-- a non-`Error` value (`'plain failure'`) is logged as that string.
+- an `Error` with a string `digest` property produces `error.digest` in the line;
+- a non-`Error` value (`'plain failure'`) is logged as that string;
+- a thrown plain object (`{ code: 42 }`) is logged as `'{"code":42}'`;
+- a thrown `Object.create(null)` is logged without throwing;
 - with `NEXT_RUNTIME=edge`, `onRequestError` writes nothing to stdout.
 
 `tests/integration/health.test.ts`:

@@ -4,6 +4,13 @@ API REST exposée par le backend Strapi. Toutes les routes sont préfixées par 
 mention contraire. Authentification : session/JWT Strapi standard pour auteur/administrateur ;
 jeton d'invitation signé en query string pour l'accès à un questionnaire privé (FR-017).
 
+> **Amendement 2026-09-24 (T063)** — Strapi fonctionne en mode `refresh` : `POST /api/auth/local`
+> renvoie un jeton d'accès de 10 minutes (`jwt`) et pose le jeton de rafraîchissement dans le cookie
+> httpOnly `strapi_up_refresh` ; `POST /api/auth/refresh` le fait tourner ; `POST /api/auth/logout`
+> (accordé à `auteur`, `administrateur` et `repondant`) révoque la session. Le frontend appelle ces
+> routes uniquement côté serveur (BFF) et garde les jetons dans ses propres cookies httpOnly ; le
+> navigateur n'appelle jamais Strapi pour l'authentification.
+
 ## Santé (Principe V — Observabilité)
 
 ### GET /health

@@ -44,7 +44,7 @@ T001–T010 still describe how those tasks were built and reviewed.
 
 ## Current state
 
-**T001–T010**, **T011–T021**, **T060**, **T061**, **T062**, **T071** and **T077** of 77 tasks in `specs/001-questionnaire-platform/tasks.md` are done
+**T001–T010**, **T011–T021**, **T060**, **T061**, **T062**, **T063**, **T071** and **T077** of 77 tasks in `specs/001-questionnaire-platform/tasks.md` are done
 (each with a recorded reviewer-subagent verdict). What exists today:
 
 - `backend/` — Strapi 5 TypeScript project (`create-strapi-app@5.54.0`, T002). SQLite by default
@@ -52,9 +52,10 @@ T001–T010 still describe how those tasks were built and reviewed.
   User has the native users-permissions `role` relation plus a required `nom`; FR-016 roles
   `auteur`/`repondant`/`administrateur` are created at boot and public registration is closed
   (T061). Role permissions come from `ROLE_PERMISSIONS` in `src/bootstrap/permissions.ts`
-  (granted at boot, additive; `auteur`: `users/me`, `role.find`, questionnaire
+  (granted at boot, additive; `auteur`: `users/me`, `role.find`, `auth.logout`, questionnaire
   `create`/`publish`/`close`/`findMine`/`findOneMine`, question `add`; `administrateur`:
-  `users/me`, `role.find`, questionnaire `close`/`findMine`/`findOneMine`; `repondant`: none);
+  `users/me`, `role.find`, `auth.logout`, questionnaire `close`/`findMine`/`findOneMine`;
+  `repondant`: `auth.logout`);
   in development, `DEV_AUTEUR_EMAIL`/`DEV_AUTEUR_PASSWORD` create a test `auteur` account at boot (T062).
   `GET /health` → 200 `{"status":"ok"}` / 503 `{"status":"degraded","reason":...}`, registered at the bare `/health`
   path via `strapi.server.routes()` in `src/index.ts` as well as `/api/health` (T008).
@@ -68,7 +69,10 @@ T001–T010 still describe how those tasks were built and reviewed.
   `api/questionnaire/services/questionnaire-access.ts` (404/403), 409 on a
   wrong transition, 422 when publishing without question (US1 backend, T011–T021).
 - `frontend/` — Next.js App Router + TypeScript project (`create-next-app`, T003); `npm run build`
-  works. No application pages yet. `GET /health` → 200 `{"status":"ok"}` (liveness only,
+  works. `/login` (server action) and a protected `/questionnaires` home ("Mes questionnaires",
+  logout); BFF session in httpOnly cookies `qp_access`/`qp_refresh` with `proxy.ts` refreshing the
+  10-minute Strapi access token; server-only `STRAPI_URL` (`http://backend:1337` in Compose); visual
+  world "Cahier Seyès" documented in `DESIGN.md` (T063). `GET /health` → 200 `{"status":"ok"}` (liveness only,
   `app/health/route.ts`); server-side JSON logs on stdout via `lib/logger.ts` (`LOG_LEVEL`, default
   `info`; server-only — never import it from a client component), request errors logged by
   `onRequestError` in `instrumentation.ts` (Node runtime only); Next.js's own banner/dev lines stay

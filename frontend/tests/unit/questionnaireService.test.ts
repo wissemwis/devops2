@@ -25,6 +25,10 @@ function json(body: unknown, status: number): Response {
   });
 }
 
+function text(body: string, status: number): Response {
+  return new Response(body, { status, headers: { 'Content-Type': 'application/json' } });
+}
+
 function stubFetch(response: Response | Error) {
   const fetchMock =
     response instanceof Error
@@ -98,6 +102,16 @@ describe('createQuestionnaire', () => {
     }
     expect(logged()).toContain('questionnaire.create.failed');
     expect(logged()).not.toContain('access-1');
+  });
+
+  it('treats an unparsable 201 body as unavailable, and logs it', async () => {
+    stubFetch(text('not json', 201));
+
+    expect(await createQuestionnaire('access-1', INPUT)).toEqual({
+      ok: false,
+      reason: 'unavailable',
+    });
+    expect(logged()).toContain('questionnaire.create.failed');
   });
 });
 
@@ -213,6 +227,13 @@ describe('getMine', () => {
     }
     expect(logged()).toContain('questionnaire.read.failed');
     expect(logged()).not.toContain('access-1');
+  });
+
+  it('treats an unparsable 200 body as unavailable, and logs it', async () => {
+    stubFetch(text('not json', 200));
+
+    expect(await getMine('access-1', 'abc123')).toEqual({ kind: 'unavailable' });
+    expect(logged()).toContain('questionnaire.read.failed');
   });
 
   it('never calls Strapi for an id that is not alphanumeric', async () => {

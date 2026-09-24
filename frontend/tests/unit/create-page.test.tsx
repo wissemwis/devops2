@@ -8,6 +8,11 @@ vi.mock('@/lib/current-author', () => ({ currentAuthorGate: () => gate() }));
 vi.mock('@/app/questionnaires/create/CreationForm', () => ({
   CreationForm: () => <form data-testid="creation-form" />,
 }));
+vi.mock('next/navigation', () => ({
+  redirect: (path: string) => {
+    throw new Error(`REDIRECT ${path}`);
+  },
+}));
 
 const { default: NouveauQuestionnairePage } = await import('@/app/questionnaires/create/page');
 
@@ -16,8 +21,7 @@ function author(role: 'auteur' | 'administrateur'): AuthorGate {
 }
 
 async function render(): Promise<string> {
-  const page = await NouveauQuestionnairePage();
-  return page === null ? '' : renderToStaticMarkup(page);
+  return renderToStaticMarkup(await NouveauQuestionnairePage());
 }
 
 beforeEach(() => {
@@ -44,11 +48,20 @@ describe('NouveauQuestionnairePage', () => {
     expect(html).not.toContain('data-testid="creation-form"');
   });
 
-  it('renders nothing when the layout handles the session', async () => {
+  it('redirects to /login when the session is missing', async () => {
     gate.mockResolvedValue({ kind: 'login' });
-    expect(await render()).toBe('');
 
+    await expect(NouveauQuestionnairePage()).rejects.toThrow('REDIRECT /login');
+  });
+
+  it('annotates an unavailable service with the headline and a retry link', async () => {
     gate.mockResolvedValue({ kind: 'unavailable' });
-    expect(await render()).toBe('');
+
+    const html = await render();
+
+    expect(html).toMatch(/<h1[^>]*>Nouveau questionnaire<\/h1>/);
+    expect(html).toContain('role="alert"');
+    expect(html).toContain('Le service est momentanément indisponible. Réessayez dans un instant.');
+    expect(html).toMatch(/<a[^>]*href="\/questionnaires\/create"[^>]*>Réessayer<\/a>/);
   });
 });

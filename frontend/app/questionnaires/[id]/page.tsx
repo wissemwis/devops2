@@ -15,15 +15,20 @@ export default async function BrouillonPage({ params }: PageProps<'/questionnair
   if (lecture.kind === 'session') redirect('/login');
   if (lecture.kind === 'unavailable') {
     return (
-      <AnnotationErreur id="brouillon-erreur">
-        {LOGIN_MESSAGES.unavailable}{' '}
-        <Link
-          href={`/questionnaires/${id}`}
-          className="entoure font-bold text-encre underline transition-colors duration-[120ms] hover:text-encre-sombre"
-        >
-          Réessayer
-        </Link>
-      </AnnotationErreur>
+      <>
+        <h1 className="mt-ligne text-[28px] font-bold leading-[64px] tracking-[-0.02em]">
+          Questionnaire
+        </h1>
+        <AnnotationErreur id="brouillon-erreur">
+          {LOGIN_MESSAGES.unavailable}{' '}
+          <Link
+            href={`/questionnaires/${id}`}
+            className="entoure font-bold text-encre underline transition-colors duration-[120ms] hover:text-encre-sombre"
+          >
+            Réessayer
+          </Link>
+        </AnnotationErreur>
+      </>
     );
   }
   return <BrouillonView questionnaire={lecture.questionnaire} />;

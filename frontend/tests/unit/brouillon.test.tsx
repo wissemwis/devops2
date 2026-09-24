@@ -136,6 +136,7 @@ describe('BrouillonPage', () => {
 
     const html = renderToStaticMarkup(await page('abc123'));
 
+    expect(html).toMatch(/<h1[^>]*>Questionnaire<\/h1>/);
     expect(html).toContain('role="alert"');
     expect(text(html)).toContain(
       'Le service est momentanément indisponible. Réessayez dans un instant.',

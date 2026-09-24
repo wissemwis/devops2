@@ -60,8 +60,10 @@ export async function createQuestionnaire(
       body: JSON.stringify({ data: payload(input) }),
     });
     if (response.status === 201) {
-      const body = (await response.json()) as { data?: { documentId?: unknown } };
-      const documentId = body.data?.documentId;
+      const body = (await response.json().catch(() => null)) as {
+        data?: { documentId?: unknown };
+      } | null;
+      const documentId = body?.data?.documentId;
       if (typeof documentId === 'string') return { ok: true, documentId };
     }
     const reason = CREATE_FAILURES[response.status];
@@ -105,8 +107,10 @@ export async function getMine(access: string, documentId: string): Promise<Lectu
     if (response.status === 404 || response.status === 403) return { kind: 'not-found' };
     if (response.status === 401) return { kind: 'session' };
     if (response.ok) {
-      const body = (await response.json()) as { data?: QuestionnaireBody | null };
-      if (body.data) return { kind: 'found', questionnaire: toQuestionnaire(body.data) };
+      const body = (await response.json().catch(() => null)) as {
+        data?: QuestionnaireBody | null;
+      } | null;
+      if (body?.data) return { kind: 'found', questionnaire: toQuestionnaire(body.data) };
     }
     logger.warn('questionnaire.read.failed', { status: response.status });
     return { kind: 'unavailable' };

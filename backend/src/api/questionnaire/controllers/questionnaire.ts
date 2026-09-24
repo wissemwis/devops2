@@ -72,6 +72,16 @@ export default factories.createCoreController(UID, ({ strapi }) => {
       return transformResponse(output);
     },
 
+    async findMine(ctx) {
+      const found = await strapi.documents(UID).findMany({
+        filters: { auteur: { id: ctx.state.user.id } },
+        sort: 'updatedAt:desc',
+        fields: READ_FIELDS,
+      } as never);
+      const output = await sanitizeOutput(found, ctx);
+      return transformResponse(output);
+    },
+
     async findOneMine(ctx) {
       const questionnaire = await loadForAction(strapi, ctx.params.id, ctx.state.user, {
         allowAdministrateur: true,

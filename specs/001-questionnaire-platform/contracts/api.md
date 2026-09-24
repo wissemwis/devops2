@@ -59,6 +59,27 @@ jeton d'invitation signé en query string pour l'accès à un questionnaire priv
 - `409` si pas `publie`.
 - Réponse `200`: `statut: "ferme"`. Toute tentative ultérieure de réponse renvoie `403`. (FR-006)
 
+### GET /api/mes-questionnaires
+
+> **Amendement 2026-09-24 (T077)** — lectures réservées à l'auteur, distinctes de la lecture
+> publique `GET /api/questionnaires/:id` (T034, `publie` uniquement, sans authentification ou
+> avec jeton d'invitation). Mêmes enveloppe, codes d'état et règles d'erreur que l'amendement US1.
+
+- Auth : auteur ou administrateur.
+- Réponse `200`: `{ "data": [ { "id", "documentId", "titre", "description", "statut", "visibilite", "createdAt", "updatedAt" }, … ], "meta": {} }`
+  — uniquement les questionnaires dont l'appelant est l'auteur (liste vide pour un administrateur,
+  qui ne crée pas de questionnaire), tous statuts, triés par `updatedAt` décroissant, sans
+  pagination, sans `questions` ni `auteur`.
+- Les paramètres de requête (`filters`, `populate`, `sort`, `fields`, `pagination`) sont ignorés.
+
+### GET /api/mes-questionnaires/:id
+
+- Auth : auteur (propriétaire) ou administrateur. (FR-016)
+- Réponse `200`: `{ "data": { "id", "documentId", "titre", "description", "statut", "visibilite", "createdAt", "updatedAt", "questions": [ { "id", "documentId", "texte", "type", "position", "obligatoire", "options", "image", … }, … ] }, "meta": {} }`
+  — quel que soit le `statut`, questions triées par `position` croissante, sans `auteur`.
+- `404` si inconnu, `403` si l'appelant n'est ni le propriétaire ni administrateur.
+- Les paramètres de requête sont ignorés.
+
 ### GET /api/questionnaires/:id
 
 - Auth : aucune si `visibilite: publique` et `statut: publie` ; jeton d'invitation requis si

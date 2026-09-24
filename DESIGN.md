@@ -205,6 +205,16 @@ Mostly square, as paper and ink are. The primary button and the stamps have a sl
 - **Error:** baseline turns red pen (`aria-invalid`), the field is described by the error annotation above the fields.
 - **Autofill:** forced back to graphite text on paper.
 
+### Ruled text area (ChampLignes)
+- **Style:** a block of notebook lines — label above in soft graphite, then a textarea on paper with a 2 px baseline under every 32 px text line (the baselines scroll with the text), three lines tall by default, vertical resize only.
+- **Focus:** every baseline turns ink blue and the control is circled in ink.
+- **Use:** the questionnaire description; any long optional text later.
+
+### Choice lines (ChoixCases)
+- **Style:** a `fieldset` whose `legend` reads like a field label, then one ruling line per choice: a native radio tinted ink (`accent-color`), then its label in body type.
+- **Focus:** the radio is circled in ink.
+- **Use:** the questionnaire visibility (« Publique » checked by default).
+
 ### Statut stamps (TamponStatut)
 One colour law per statut, used everywhere a statut appears:
 - **brouillon:** pencil grey, 1 px dashed border, lowercase, regular weight — not yet committed.
@@ -218,7 +228,13 @@ A red-pen note written on the next ruling line, announced with `role="alert"`, w
 The page itself: full-viewport paper with the Seyès ruling (8 px fine, 32 px strong, faint 32 px verticals) and the red margin rule, a margin column with the uppercase label, and the content column as `<main>`.
 
 ### Table of contents (Sommaire)
-The author's questionnaires as a numbered list, most recent first: number in the margin (tabular), title (truncated on one line), a dotted leader in strong-ruling blue that stretches to the stamp, the statut stamp, then « modifié le 24 septembre 2026 » in small soft graphite (French long date, Europe/Paris). **Empty state:** a single pencil line, « Vos questionnaires apparaîtront ici. » — an invitation on a ready page, never an apology.
+The author's questionnaires as a numbered list, most recent first: number in the margin (tabular), title as an ink link to the draft page (truncated on one line, full title in its `title` attribute), a dotted leader in strong-ruling blue that stretches to the stamp, the statut stamp, then « modifié le 24 septembre 2026 » in small soft graphite (French long date, Europe/Paris). **Empty state:** a single pencil line, « Vos questionnaires apparaîtront ici. » — an invitation on a ready page, never an apology.
+
+### Draft page (BrouillonView)
+One questionnaire read back on its sheet: an ink back link « ← Mes questionnaires », the full title as the headline (wrapped on the ruling, never truncated), one line with the statut stamp and the visibility in soft graphite, the description in body type with its line breaks kept, then the « QUESTIONS » label in the margin and the questions numbered in the margin, each with its type and « obligatoire » in small soft graphite. **Empty state:** the pencil line « Aucune question pour l'instant. » **Unknown or foreign questionnaire:** the headline « Questionnaire introuvable », one sentence, a link back to the list.
+
+### Creation form
+Headline « Nouveau questionnaire » in the narrow form column: Titre (ChampLigne), Description (ChampLignes), Visibilité (ChoixCases), then two ruling lines lower the ink button « Créer le brouillon » (pending: « Création… ») with the ink link « Annuler » to its right. Errors follow the login rule: one red-pen annotation above the fields; only a title problem draws the title's baseline in red. An `administrateur` sees the pencil line « La création de questionnaires est réservée aux auteurs. » instead of the form.
 
 ### Header line
 In the author space, the first line of the content column carries the author's name (soft graphite, truncated) on the left and « Se déconnecter » on the right.
@@ -244,5 +260,5 @@ In the author space, the first line of the content column carries the author's n
 ### Known limitations (to fix in a later pass)
 - The margin label's line height does not sit exactly on the ruling.
 - The fully rounded focus outline visually curves around the field baseline rather than circling it cleanly.
-- Truncated questionnaire titles and author names have no `title` attribute, so the full text is not reachable on hover.
+- Truncated author names have no `title` attribute, so the full name is not reachable on hover (questionnaire titles have one since T022).
 - No fallback font metrics are declared for Atkinson Hyperlegible Next, so the swap from the system fallback can shift text slightly (Next.js build warns about it).

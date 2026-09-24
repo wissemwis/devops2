@@ -1,8 +1,4 @@
-import type {
-  CreateResult,
-  NewQuestionnaire,
-  Visibilite,
-} from '@/services/questionnaireService';
+import type { CreateResult, NewQuestionnaire, Visibilite } from '@/services/questionnaireService';
 import type { CreationFormState, CreationMessage } from './creation-state';
 
 export type SubmitCreationDeps = {
@@ -11,8 +7,7 @@ export type SubmitCreationDeps = {
 };
 
 export type CreationOutcome =
-  | { kind: 'form'; state: CreationFormState }
-  | { kind: 'redirect'; to: string };
+  { kind: 'form'; state: CreationFormState } | { kind: 'redirect'; to: string };
 
 function isVisibilite(value: string): value is Visibilite {
   return value === 'publique' || value === 'privee';

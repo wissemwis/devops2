@@ -1,10 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import { submitCreation } from '@/lib/create-questionnaire';
-import {
-  CREATION_MESSAGES,
-  INITIAL_CREATION_STATE,
-  titreInvalide,
-} from '@/lib/creation-state';
+import { CREATION_MESSAGES, INITIAL_CREATION_STATE, titreInvalide } from '@/lib/creation-state';
 import type { CreateResult } from '@/services/questionnaireService';
 
 function form(fields: Record<string, string>): FormData {
@@ -17,7 +13,11 @@ function creating(result: CreateResult) {
   return vi.fn().mockResolvedValue(result);
 }
 
-const FIELDS = { titre: '  Retour séance 5  ', description: '  Dix minutes.  ', visibilite: 'privee' };
+const FIELDS = {
+  titre: '  Retour séance 5  ',
+  description: '  Dix minutes.  ',
+  visibilite: 'privee',
+};
 
 describe('creation state', () => {
   it('holds the exact French messages and a public default', () => {
@@ -80,7 +80,10 @@ describe('submitCreation', () => {
     const create = creating({ ok: true, documentId: 'abc123' });
 
     expect(
-      await submitCreation(form({ ...FIELDS, visibilite: 'secrete' }), { access: 'access-1', create }),
+      await submitCreation(form({ ...FIELDS, visibilite: 'secrete' }), {
+        access: 'access-1',
+        create,
+      }),
     ).toEqual({
       kind: 'form',
       state: {

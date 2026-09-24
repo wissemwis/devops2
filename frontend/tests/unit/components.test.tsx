@@ -85,6 +85,17 @@ describe('Sommaire', () => {
     expect(html).toMatch(/<a[^>]*href="\/questionnaires"[^>]*>Réessayer<\/a>/);
     expect(html).toContain('role="alert"');
   });
+
+  it('links each title to its draft page and carries the full title on hover', () => {
+    const html = renderToStaticMarkup(<Sommaire state={{ kind: 'list', items }} />);
+
+    expect(html).toMatch(
+      /<a(?=[^>]*href="\/questionnaires\/b")(?=[^>]*title="Retour séance 4")[^>]*>Retour séance 4<\/a>/,
+    );
+    expect(html).toMatch(
+      /<a(?=[^>]*href="\/questionnaires\/a")(?=[^>]*title="Retour séance 3")[^>]*>Retour séance 3<\/a>/,
+    );
+  });
 });
 
 describe('LoginFormView', () => {

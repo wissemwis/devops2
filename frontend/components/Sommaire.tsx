@@ -36,7 +36,13 @@ export function Sommaire({ state }: { state: SommaireState }) {
           <span className="tabular-nums text-graphite-doux sm:absolute sm:right-[calc(100%+3.25rem)] sm:text-right">
             {index + 1}.
           </span>
-          <span className="min-w-0 truncate">{item.titre}</span>
+          <Link
+            href={`/questionnaires/${item.documentId}`}
+            title={item.titre}
+            className="entoure min-w-0 truncate text-encre underline-offset-4 transition-colors duration-[120ms] hover:text-encre-sombre hover:underline"
+          >
+            {item.titre}
+          </Link>
           <span
             aria-hidden="true"
             className="min-w-4 flex-1 translate-y-2 border-b-2 border-dotted border-reglure-forte"

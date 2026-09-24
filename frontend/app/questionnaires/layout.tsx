@@ -4,13 +4,16 @@ import { AnnotationErreur } from '@/components/AnnotationErreur';
 import { Feuille } from '@/components/Feuille';
 import { gateAuthor } from '@/lib/author-gate';
 import { LOGIN_MESSAGES } from '@/lib/login-state';
-import { ACCESS_COOKIE } from '@/lib/session-cookies';
+import { ACCESS_COOKIE, REFRESH_COOKIE } from '@/lib/session-cookies';
 import { currentUser } from '@/services/authService';
 import { logoutAction } from './actions';
 
 export default async function QuestionnairesLayout({ children }: LayoutProps<'/questionnaires'>) {
-  const access = (await cookies()).get(ACCESS_COOKIE)?.value;
-  const gate = await gateAuthor(access, { currentUser });
+  const store = await cookies();
+  const gate = await gateAuthor(
+    { access: store.get(ACCESS_COOKIE)?.value, refresh: store.get(REFRESH_COOKIE)?.value },
+    { currentUser },
+  );
   if (gate.kind === 'login') redirect('/login');
   if (gate.kind === 'unavailable') {
     return (
@@ -35,7 +38,7 @@ export default async function QuestionnairesLayout({ children }: LayoutProps<'/q
         <form action={logoutAction}>
           <button
             type="submit"
-            className="entoure text-encre underline transition-colors duration-[120ms] hover:text-encre-sombre"
+            className="entoure text-encre underline underline-offset-4 transition-colors duration-[120ms] hover:text-encre-sombre"
           >
             Se déconnecter
           </button>

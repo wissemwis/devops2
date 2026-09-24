@@ -64,9 +64,9 @@ The backend runs users-permissions in **refresh mode** (`backend/config/plugins.
 | `frontend/services/authService.ts` | `login(email, password)`, `refresh(refreshToken)`, `logout(accessToken, refreshToken)`, `currentUser(accessToken)`. Returns typed results: `{ ok: true, tokens, user }` or `{ ok: false, reason: 'invalid' \| 'forbidden-role' \| 'unavailable' }`. Reads the refresh token from the response's `Set-Cookie` (`strapi_up_refresh`) with `headers.getSetCookie()`. |
 | `frontend/lib/session-cookies.ts` | Cookie names and options: access cookie (`maxAge` from the JWT `exp`, 10 minutes by default), refresh cookie (`maxAge` 30 days); `httpOnly`, `sameSite: 'lax'`, `path: '/'`, `secure` only when `NODE_ENV === 'production'`. Helpers to write both and clear both. |
 | `frontend/lib/session-decision.ts` | Pure `decide({ access, refresh, now })` → `'pass' \| 'refresh' \| 'login'`: no refresh cookie → `login`; access present and `exp` more than 30 s ahead → `pass`; otherwise → `refresh`. |
-| `frontend/proxy.ts` | Next 16 proxy (Node runtime), matcher `/questionnaires/:path*`. Applies `decide`: `login` → redirect `/login`; `refresh` → `authService.refresh`; success writes both cookies on the response **and** on the forwarded request (so the render reads the new access token); failure clears both cookies and redirects to `/login`. |
-| `frontend/app/login/page.tsx` + `actions.ts` + `LoginForm.tsx` | Server page (redirects to `/questionnaires` when a valid session already exists); client form with `useActionState`; server action `loginAction` wraps the pure `authenticate(formData, deps)` which validates input, calls `authService.login`, and returns the form state (message, submitted email kept) or writes cookies and `redirect('/questionnaires')`. |
-| `frontend/app/questionnaires/layout.tsx` | Server layout: `currentUser(access)`; `null` → `redirect('/login')`; renders the author header (name, "Se déconnecter" form bound to `logoutAction`). |
+| `frontend/proxy.ts` | Next 16 proxy (Node runtime), matcher `/questionnaires/:path*`. Applies `decide`: `login` → redirect `/login`; `refresh` → `authService.refresh`; success writes both cookies on the response **and** on the forwarded request (so the render reads the new access token); a rejected refresh redirects to `/login` and keeps the cookies; an unavailable Strapi lets the request through. Concurrent refreshes of the same token share one call (`lib/refresh-once.ts`, 10 s per token, `unavailable` never reused). |
+| `frontend/app/login/page.tsx` + `actions.ts` + `LoginForm.tsx` | Server page (redirects to `/questionnaires` only when `lib/login-page.ts` `shouldLeaveLogin` confirms an unexpired access token of an author; never on a refresh cookie alone); client form with `useActionState`; server action `loginAction` wraps the pure `authenticate(formData, deps)` which validates input, calls `authService.login`, and returns the form state (message, submitted email kept) or writes cookies and `redirect('/questionnaires')`. |
+| `frontend/app/questionnaires/layout.tsx` | Server layout: `lib/author-gate.ts` `gateAuthor({ access, refresh })`: access present → `currentUser(access)`, `null` → `redirect('/login')`; only the refresh cookie left (the proxy could not refresh it) → the « service indisponible » note, no redirect; no cookie → `redirect('/login')`; renders the author header (name, "Se déconnecter" form bound to `logoutAction`). |
 | `frontend/app/questionnaires/page.tsx` | Server page: `GET /api/mes-questionnaires` with the access token; renders `Sommaire` (list, empty, or error state). |
 | `frontend/app/questionnaires/actions.ts` | `logoutAction`: `authService.logout`, clear cookies, `redirect('/login')` (cookies cleared even if Strapi is unreachable). |
 | `frontend/app/page.tsx` | Replaced: `redirect('/questionnaires')`. |
@@ -103,6 +103,19 @@ become pages.
   `auth.logout.failed` events with status codes only.
 - No open redirect: login always redirects to `/questionnaires` (no `next` parameter — YAGNI).
 - Strapi's own auth rate limit (10 requests / minute) stays the brute-force guard.
+- Concurrent refresh: Strapi rotates the refresh token, so two requests refreshing the same token
+  would make the second one fail. Refreshes are deduplicated per process; across several
+  instances a race may still force a re-login. On a rejected refresh the cookies are kept (a
+  stale httpOnly cookie is harmless; the next login overwrites it) and the user is sent to
+  `/login`, which shows the form.
+- A Strapi access token is not bound to the session: after logout it stays valid until it
+  expires (≤ 10 minutes). Accepted.
+- Before the V1 deployment (T052), Strapi must trust the TLS-terminating proxy (`proxy` in
+  `backend/config/server.ts`) or set `sessions.cookie.secure`; otherwise Strapi cannot set its
+  secure refresh cookie in production and login/refresh fail.
+- A login whose role cannot be read because Strapi became unavailable revokes the fresh session
+  (best effort) before answering `unavailable`; a logout with only the refresh cookie left logs
+  `auth.logout.skipped` (no revocation without an access token) and still clears the cookies.
 
 ### 4.5 Backend change
 

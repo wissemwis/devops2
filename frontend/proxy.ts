@@ -6,8 +6,11 @@ import {
   nowInSeconds,
   writeSession,
 } from '@/lib/session-cookies';
+import { createRefreshOnce } from '@/lib/refresh-once';
 import { decide } from '@/lib/session-decision';
 import { refresh } from '@/services/authService';
+
+const refreshOnce = createRefreshOnce(refresh);
 
 function toLogin(request: NextRequest): NextResponse {
   const response = NextResponse.redirect(new URL('/login', request.url));
@@ -25,9 +28,11 @@ export async function proxy(request: NextRequest): Promise<NextResponse> {
   });
   if (decision === 'pass') return NextResponse.next();
   if (decision === 'login' || !refreshToken) return toLogin(request);
-  const result = await refresh(refreshToken);
+  const result = await refreshOnce(refreshToken);
   if (!result.ok) {
-    return result.reason === 'unavailable' ? NextResponse.next() : toLogin(request);
+    return result.reason === 'unavailable'
+      ? NextResponse.next()
+      : NextResponse.redirect(new URL('/login', request.url));
   }
   request.cookies.set(ACCESS_COOKIE, result.tokens.access);
   request.cookies.set(REFRESH_COOKIE, result.tokens.refresh);

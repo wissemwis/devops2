@@ -73,19 +73,36 @@ describe('proxy', () => {
     expect(forwarded).toContain('qp_refresh=r2');
   });
 
-  it('sends a rejected session to /login and clears it', async () => {
+  it('sends a rejected session to /login without clearing its cookies', async () => {
     refresh.mockResolvedValue({ ok: false, reason: 'rejected' });
 
     const response = await proxy(requestWith({ qp_refresh: 'revoked' }));
 
     expect(response.headers.get('location')).toBe('http://localhost:3000/login');
-    expect(response.cookies.get('qp_refresh')?.value).toBe('');
+    expect(response.cookies.getAll()).toEqual([]);
+  });
+
+  it('refreshes once for concurrent requests carrying the same refresh token', async () => {
+    const renewed = token(NOW + 600);
+    refresh.mockResolvedValue({ ok: true, tokens: { access: renewed, refresh: 'r4' } });
+
+    const responses = await Promise.all([
+      proxy(requestWith({ qp_refresh: 'r3' })),
+      proxy(requestWith({ qp_refresh: 'r3' })),
+    ]);
+
+    expect(refresh).toHaveBeenCalledTimes(1);
+    for (const response of responses) {
+      expect(response.headers.get('location')).toBeNull();
+      expect(response.cookies.get('qp_access')?.value).toBe(renewed);
+      expect(response.cookies.get('qp_refresh')?.value).toBe('r4');
+    }
   });
 
   it('keeps the session when Strapi is unreachable during refresh', async () => {
     refresh.mockResolvedValue({ ok: false, reason: 'unavailable' });
 
-    const response = await proxy(requestWith({ qp_refresh: 'r1' }));
+    const response = await proxy(requestWith({ qp_refresh: 'r5' }));
 
     expect(response.headers.get('location')).toBeNull();
     expect(response.cookies.getAll()).toEqual([]);

@@ -55,6 +55,15 @@ async function readAuthor(access: string): Promise<Author | null> {
   return toAuthor((await response.json()) as MeBody);
 }
 
+async function readAuthorOrRevoke(tokens: SessionTokens): Promise<Author | null> {
+  try {
+    return await readAuthor(tokens.access);
+  } catch (error) {
+    if (error instanceof StrapiUnavailableError) await logout(tokens);
+    throw error;
+  }
+}
+
 async function sessionTokensFrom(response: Response): Promise<SessionTokens | null> {
   const body = (await response.json()) as { jwt?: unknown };
   const refreshToken = refreshTokenFrom(response);
@@ -75,7 +84,7 @@ export async function login(email: string, password: string): Promise<LoginResul
       logger.error('auth.login.unexpected-response', { status: response.status });
       return { ok: false, reason: 'unavailable' };
     }
-    const author = await readAuthor(tokens.access);
+    const author = await readAuthorOrRevoke(tokens);
     if (author === null) {
       await logout(tokens);
       return { ok: false, reason: 'forbidden-role' };

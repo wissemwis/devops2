@@ -122,6 +122,21 @@ describe('login', () => {
     expect(calls.map((call) => call.path)).toContain('/api/auth/logout');
   });
 
+  it('revokes the fresh session when the role cannot be read because Strapi became unavailable', async () => {
+    const calls = stubStrapi({
+      'POST /api/auth/local': () => json({ jwt: 'access-1' }, 200, REFRESH_SET_COOKIE),
+      'GET /api/users/me?populate=role': () => json({}, 503),
+      'POST /api/auth/logout': () => json({ ok: true }),
+    });
+
+    const result = await login('prof@example.test', 'Passw0rd!');
+
+    expect(result).toEqual({ ok: false, reason: 'unavailable' });
+    const revoke = calls.find((call) => call.path === '/api/auth/logout');
+    expect(revoke?.headers.authorization).toBe('Bearer access-1');
+    expect(revoke?.headers.cookie).toBe('strapi_up_refresh=refresh-1');
+  });
+
   it('maps 429 and 5xx to unavailable and logs the status only', async () => {
     for (const status of [429, 500, 503]) {
       stubStrapi({ 'POST /api/auth/local': () => json({}, status) });

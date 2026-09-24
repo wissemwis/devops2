@@ -162,7 +162,7 @@ courante — la Phase 7 (Docker/CI/Kubernetes) est une migration ultérieure, pa
 - [ ] T051 [P] Configure Vercel project for `frontend/`: link the Git repository, verify the
   auto-detected Next.js build (`next build`), connect the production deploy to the main branch
 - [ ] T052 [P] Configure Strapi Cloud project for `backend/`: link the Git repository, enable
-  the managed PostgreSQL add-on, verify the build/deploy pipeline triggers on push
+  the managed PostgreSQL add-on, verify the build/deploy pipeline triggers on push *(T063: in production Strapi sets its refresh cookie `strapi_up_refresh` with `secure: true`; behind TLS termination Koa must trust the proxy — set `proxy` in `backend/config/server.ts` (e.g. `IS_PROXIED`) or `sessions.cookie.secure` — or login/refresh fail with 500.)*
 - [ ] T053 Configure production environment variables in the Vercel and Strapi Cloud dashboards
   (DB connection, JWT secret, SMTP credentials — FR-017, API base URL) per `.env.example` (T005)
   — no secret committed to the repo (Principe IV)

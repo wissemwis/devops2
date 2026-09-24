@@ -132,8 +132,11 @@ describe('GET /api/mes-questionnaires (T077, US1, FR-016)', () => {
   it('ignores client query parameters', async () => {
     const alice = await createUserWithRole(strapi, 'auteur');
     const bob = await createUserWithRole(strapi, 'auteur');
-    const aliceOne = await createQuestionnaire(strapi, alice.user);
-    await addQuestion(strapi, aliceOne);
+    const aliceOlder = await createQuestionnaire(strapi, alice.user, { titre: 'A première vue' });
+    await addQuestion(strapi, aliceOlder);
+    await pause();
+    const aliceNewer = await createQuestionnaire(strapi, alice.user, { titre: 'B seconde vue' });
+    await pause();
     await createQuestionnaire(strapi, bob.user);
 
     for (const query of [
@@ -146,7 +149,7 @@ describe('GET /api/mes-questionnaires (T077, US1, FR-016)', () => {
       const res = await list(alice.jwt, query);
 
       expect(res.status).toBe(200);
-      expect(documentIds(res)).toEqual([aliceOne.documentId]);
+      expect(documentIds(res)).toEqual([aliceNewer.documentId, aliceOlder.documentId]);
       expect(res.body.data[0]).not.toHaveProperty('auteur');
       expect(res.body.data[0]).not.toHaveProperty('questions');
       expect(res.body.meta).toEqual({});

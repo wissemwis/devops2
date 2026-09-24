@@ -44,7 +44,7 @@ T001–T010 still describe how those tasks were built and reviewed.
 
 ## Current state
 
-**T001–T010**, **T011–T021**, **T060**, **T061**, **T062** and **T077** of 77 tasks in `specs/001-questionnaire-platform/tasks.md` are done
+**T001–T010**, **T011–T021**, **T060**, **T061**, **T062**, **T071** and **T077** of 77 tasks in `specs/001-questionnaire-platform/tasks.md` are done
 (each with a recorded reviewer-subagent verdict). What exists today:
 
 - `backend/` — Strapi 5 TypeScript project (`create-strapi-app@5.54.0`, T002). SQLite by default

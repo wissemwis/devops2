@@ -8,7 +8,14 @@ type Body = { data?: Record<string, unknown> };
 
 const CREATE_FIELDS = ['titre', 'description', 'visibilite'] as const;
 
-const READ_FIELDS = ['titre', 'description', 'statut', 'visibilite', 'createdAt', 'updatedAt'];
+const READ_FIELDS = [
+  'titre',
+  'description',
+  'statut',
+  'visibilite',
+  'createdAt',
+  'updatedAt',
+] as const;
 
 function pick<T extends readonly string[]>(
   input: Record<string, unknown>,

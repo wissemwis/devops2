@@ -140,10 +140,24 @@ describe('GET /api/mes-questionnaires/:id (T077, US1, FR-016)', () => {
       }),
       expect.objectContaining({ texte: 'Troisième', type: 'likert', position: 3 }),
     ]);
+    const expectedQuestionKeys = [
+      'createdAt',
+      'documentId',
+      'id',
+      'image',
+      'obligatoire',
+      'options',
+      'position',
+      'publishedAt',
+      'texte',
+      'type',
+      'updatedAt',
+    ].sort();
     for (const question of res.body.data.questions) {
       expect(question.documentId).toEqual(expect.any(String));
       expect(question.image).toBeNull();
       expect(question).not.toHaveProperty('questionnaire');
+      expect(Object.keys(question).sort()).toEqual(expectedQuestionKeys);
     }
   });
 

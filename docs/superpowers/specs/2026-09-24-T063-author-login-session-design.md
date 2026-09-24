@@ -49,7 +49,7 @@ The backend runs users-permissions in **refresh mode** (`backend/config/plugins.
 |---|----------|-----------------------|
 | D1 | Scope: T063 (login + session + minimal author home) **and** the visual world for the whole author space; only T063's surfaces are built. | T063 alone with the world extended task by task; skipping to T022. |
 | D2 | BFF: Next.js server actions and server components call Strapi; tokens in httpOnly cookies set by Next.js. | JWT in `localStorage` with direct browser calls (XSS-readable token, CORS); Auth.js credentials provider (extra dependency for one login). |
-| D3 | Keep Strapi refresh mode; store access and refresh tokens in two cookies; `proxy.ts` refreshes before rendering; logout revokes in Strapi (grant `auth.logout` to `auteur`/`administrateur`). | Switch Strapi to `legacy-support` 30-day JWT (logout cannot revoke; a stolen token lives 30 days); access token only (re-login every 10 minutes). |
+| D3 | Keep Strapi refresh mode; store access and refresh tokens in two cookies; `proxy.ts` refreshes before rendering; logout revokes in Strapi (grant `auth.logout` to the three business roles, §4.5). | Switch Strapi to `legacy-support` 30-day JWT (logout cannot revoke; a stolen token lives 30 days); access token only (re-login every 10 minutes). |
 | D4 | After login: a protected `/questionnaires` author home with header (name, logout) and the "Mes questionnaires" list. No link or button to pages that do not exist yet ("Nouveau questionnaire" arrives with T022). | An empty protected shell; redirecting to the future `/questionnaires/create`. |
 | D5 | Only `auteur` and `administrateur` may open a session; any other role is refused at login and its fresh Strapi session is revoked immediately. | Opening a session for any valid account and letting later calls fail with 403. |
 | D6 | Visual world "Cahier Seyès" (impeccable direction round, seed `8d74740c`, assigned direction, chosen by the user), light theme only. | "Fiche de séance" (impeccable's pick), "Polycopié" (competitive challenger), the category-standard SaaS look; declined challengers: Orizuru, convention catalog, drum machine, Datamatics, rain garden. |
@@ -106,8 +106,10 @@ become pages.
 
 ### 4.5 Backend change
 
-`ROLE_PERMISSIONS` gains `plugin::users-permissions.auth.logout` for `auteur` and
-`administrateur`. `repondant` stays `[]`.
+`ROLE_PERMISSIONS` gains `plugin::users-permissions.auth.logout` for `auteur`,
+`administrateur` **and `repondant`**: D5 revokes the fresh session of a refused account, and a
+`repondant` (the default role of any account) could not revoke its own session otherwise.
+Logging out only ends the caller's own session, so the grant gives no access to anything.
 
 ### 4.6 Configuration
 
@@ -170,9 +172,11 @@ Frontend (Vitest, existing harness, no new dependency):
 - Components with `react-dom/server` `renderToStaticMarkup`: `TamponStatut` (three statuts),
   `Sommaire` (order, empty, error), `LoginForm` (three messages, labels bound to inputs).
 
-Backend (Jest): `role_permissions` covers the new grant; a contract test proves an `auteur`
-logged in through `POST /api/auth/local` gets 200 on `POST /api/auth/logout` and that the
-revoked refresh token then fails on `POST /api/auth/refresh`.
+Backend (Jest): `role_permissions` covers the new grant; a contract test proves, for accounts
+logged in through `POST /api/auth/local`: `GET /api/users/me?populate=role` returns the role type
+for `auteur` and `administrateur`; `POST /api/auth/refresh` rotates the refresh cookie; `auteur`,
+`administrateur` and `repondant` get 200 on `POST /api/auth/logout`, after which the revoked
+refresh token fails on `POST /api/auth/refresh`.
 
 Gates: frontend and backend `build`, `lint`, `format:check`, `test`; `tests/structure/*.sh`
 (extended for `STRAPI_URL`).

@@ -74,6 +74,21 @@ input:-webkit-autofill {
   box-shadow: inset 0 0 0 100px var(--color-papier);
 }
 
+.lignes {
+  --trait: var(--color-graphite);
+  background-color: var(--color-papier);
+  background-image: repeating-linear-gradient(
+    to bottom,
+    transparent 0 30px,
+    var(--trait) 30px 32px
+  );
+  background-attachment: local;
+}
+
+.lignes:focus {
+  --trait: var(--color-encre);
+}
+
 .entoure:focus-visible {
   outline: 2px solid var(--color-encre);
   outline-offset: 6px;

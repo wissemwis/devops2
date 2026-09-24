@@ -7,6 +7,7 @@ export const ROLE_PERMISSIONS: Record<BusinessRoleType, readonly string[]> = {
   auteur: [
     'plugin::users-permissions.user.me',
     'plugin::users-permissions.role.find',
+    'plugin::users-permissions.auth.logout',
     'api::questionnaire.questionnaire.create',
     'api::questionnaire.questionnaire.publish',
     'api::questionnaire.questionnaire.close',
@@ -14,10 +15,11 @@ export const ROLE_PERMISSIONS: Record<BusinessRoleType, readonly string[]> = {
     'api::questionnaire.questionnaire.findOneMine',
     'api::question.question.add',
   ],
-  repondant: [],
+  repondant: ['plugin::users-permissions.auth.logout'],
   administrateur: [
     'plugin::users-permissions.user.me',
     'plugin::users-permissions.role.find',
+    'plugin::users-permissions.auth.logout',
     'api::questionnaire.questionnaire.close',
     'api::questionnaire.questionnaire.findMine',
     'api::questionnaire.questionnaire.findOneMine',

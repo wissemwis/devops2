@@ -198,6 +198,8 @@ check_model "'dev' in ' '.join(data['services']['frontend'].get('command') or []
     "frontend command starts the Next.js dev server (npm run dev)"
 check_model "'backend' in data['services']['frontend'].get('depends_on', {})" \
     "frontend depends_on backend"
+check_model "data['services']['frontend'].get('environment', {}).get('STRAPI_URL') == 'http://backend:1337'" \
+    "frontend reaches Strapi server-side at http://backend:1337 (STRAPI_URL)"
 check_model "data['services']['frontend'].get('depends_on', {}).get('init', {}).get('condition') == 'service_completed_successfully'" \
     "frontend depends_on init with condition service_completed_successfully (node_modules volume must be chowned before frontend starts non-root)"
 check_model "data['services']['frontend'].get('user') == '1000:1000'" \

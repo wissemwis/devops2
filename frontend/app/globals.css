@@ -1,26 +1,89 @@
 @import 'tailwindcss';
 
+@theme {
+  --color-papier: #fbfbf8;
+  --color-reglure: #dce3f3;
+  --color-reglure-forte: #b9c6e8;
+  --color-marge: #d8343a;
+  --color-encre: #1f3fa8;
+  --color-encre-sombre: #182f7e;
+  --color-graphite: #2b2b2b;
+  --color-graphite-doux: #5b5f6b;
+  --color-crayon: #616161;
+  --color-tampon: #707070;
+  --color-stylo-rouge: #c62828;
+  --font-sans: var(--font-atkinson), ui-sans-serif, system-ui, sans-serif;
+  --spacing-ligne: 32px;
+}
+
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  color-scheme: light;
+  --marge-x: 96px;
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
+@media (max-width: 639px) {
   :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+    --marge-x: 20px;
   }
 }
 
+html {
+  background: var(--color-papier);
+}
+
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--color-papier);
+  color: var(--color-graphite);
+  font-family: var(--font-sans);
+  font-size: 17px;
+  line-height: 32px;
+  caret-color: var(--color-encre);
+  scrollbar-color: var(--color-reglure-forte) var(--color-papier);
+}
+
+::selection {
+  background: var(--color-reglure-forte);
+  color: var(--color-graphite);
+}
+
+a {
+  text-underline-offset: 4px;
+}
+
+.feuille {
+  background-color: var(--color-papier);
+  background-image:
+    linear-gradient(
+      to right,
+      transparent calc(var(--marge-x) - 1px),
+      var(--color-marge) calc(var(--marge-x) - 1px),
+      var(--color-marge) calc(var(--marge-x) + 1px),
+      transparent calc(var(--marge-x) + 1px)
+    ),
+    repeating-linear-gradient(to bottom, transparent 0 31px, var(--color-reglure-forte) 31px 32px),
+    repeating-linear-gradient(to bottom, transparent 0 7px, var(--color-reglure) 7px 8px),
+    repeating-linear-gradient(
+      to right,
+      transparent 0 31px,
+      color-mix(in srgb, var(--color-reglure) 55%, transparent) 31px 32px
+    );
+}
+
+input:-webkit-autofill {
+  -webkit-text-fill-color: var(--color-graphite);
+  box-shadow: inset 0 0 0 100px var(--color-papier);
+}
+
+.entoure:focus-visible {
+  outline: 2px solid var(--color-encre);
+  outline-offset: 6px;
+  border-radius: 999px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    transition-duration: 0ms !important;
+  }
 }

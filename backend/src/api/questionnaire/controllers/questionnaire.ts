@@ -8,6 +8,8 @@ type Body = { data?: Record<string, unknown> };
 
 const CREATE_FIELDS = ['titre', 'description', 'visibilite'] as const;
 
+const READ_FIELDS = ['titre', 'description', 'statut', 'visibilite', 'createdAt', 'updatedAt'];
+
 function pick<T extends readonly string[]>(
   input: Record<string, unknown>,
   keys: T,
@@ -67,6 +69,19 @@ export default factories.createCoreController(UID, ({ strapi }) => {
         data: { statut: 'ferme' } as never,
       });
       const output = await sanitizeOutput(updated, ctx);
+      return transformResponse(output);
+    },
+
+    async findOneMine(ctx) {
+      const questionnaire = await loadForAction(strapi, ctx.params.id, ctx.state.user, {
+        allowAdministrateur: true,
+      });
+      const found = await strapi.documents(UID).findOne({
+        documentId: questionnaire.documentId,
+        fields: READ_FIELDS,
+        populate: { questions: { sort: 'position:asc', populate: ['image'] } },
+      } as never);
+      const output = await strapi.contentAPI.sanitize.output(found, strapi.getModel(UID));
       return transformResponse(output);
     },
   };

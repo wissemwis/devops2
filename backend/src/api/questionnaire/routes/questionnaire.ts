@@ -18,5 +18,11 @@ export default {
       handler: 'api::questionnaire.questionnaire.close',
       config: { policies: [] },
     },
+    {
+      method: 'GET',
+      path: '/mes-questionnaires/:id',
+      handler: 'api::questionnaire.questionnaire.findOneMine',
+      config: { policies: [] },
+    },
   ],
 };

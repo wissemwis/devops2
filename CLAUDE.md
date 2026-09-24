@@ -44,7 +44,7 @@ T001–T010 still describe how those tasks were built and reviewed.
 
 ## Current state
 
-**T001–T010**, **T011–T021**, **T060**, **T061**, **T062**, **T063**, **T071** and **T077** of 77 tasks in `specs/001-questionnaire-platform/tasks.md` are done
+**T001–T010**, **T011–T021**, **T022**, **T060**, **T061**, **T062**, **T063**, **T071** and **T077** of 77 tasks in `specs/001-questionnaire-platform/tasks.md` are done
 (each with a recorded reviewer-subagent verdict). What exists today:
 
 - `backend/` — Strapi 5 TypeScript project (`create-strapi-app@5.54.0`, T002). SQLite by default
@@ -72,7 +72,10 @@ T001–T010 still describe how those tasks were built and reviewed.
   works. `/login` (server action) and a protected `/questionnaires` home ("Mes questionnaires",
   logout); BFF session in httpOnly cookies `qp_access`/`qp_refresh` with `proxy.ts` refreshing the
   10-minute Strapi access token; server-only `STRAPI_URL` (`http://backend:1337` in Compose); visual
-  world "Cahier Seyès" documented in `DESIGN.md` (T063). `GET /health` → 200 `{"status":"ok"}` (liveness only,
+  world "Cahier Seyès" documented in `DESIGN.md` (T063). `/questionnaires/create` (creation form,
+  `auteur` only) and the draft page `/questionnaires/[id]` (read via `GET /api/mes-questionnaires/:id`);
+  the table of contents links each title to its draft; Strapi calls for questionnaires live in
+  `services/questionnaireService.ts` (T022). `GET /health` → 200 `{"status":"ok"}` (liveness only,
   `app/health/route.ts`); server-side JSON logs on stdout via `lib/logger.ts` (`LOG_LEVEL`, default
   `info`; server-only — never import it from a client component), request errors logged by
   `onRequestError` in `instrumentation.ts` (Node runtime only); Next.js's own banner/dev lines stay

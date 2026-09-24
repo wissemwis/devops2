@@ -2,9 +2,10 @@ type ChampLigneProps = {
   id: string;
   name: string;
   label: string;
-  type: 'email' | 'password';
+  type: 'email' | 'password' | 'text';
   autoComplete: string;
   defaultValue?: string;
+  maxLength?: number;
   invalid?: boolean;
   describedBy?: string;
 };
@@ -16,6 +17,7 @@ export function ChampLigne({
   type,
   autoComplete,
   defaultValue,
+  maxLength,
   invalid,
   describedBy,
 }: ChampLigneProps) {
@@ -30,6 +32,7 @@ export function ChampLigne({
         type={type}
         autoComplete={autoComplete}
         defaultValue={defaultValue}
+        maxLength={maxLength}
         required
         aria-invalid={invalid ? true : undefined}
         aria-describedby={describedBy}

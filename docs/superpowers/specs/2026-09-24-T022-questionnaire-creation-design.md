@@ -72,7 +72,8 @@ The layout and the pages call it; within one request Strapi's `/users/me` is cal
   `visibilite`, `questions: { documentId, texte, type, position, obligatoire }[]`),
   `{ kind: 'not-found' }` for `404` and `403`, `{ kind: 'session' }` for `401`,
   `{ kind: 'unavailable' }` otherwise (logged `questionnaire.read.failed`).
-- `documentId` is URL-encoded in the path.
+- A `documentId` that is not alphanumeric (Strapi's are lowercase cuid2) returns `not-found`
+  without calling Strapi, so a path such as `..` can never reach another backend route.
 
 ### 4.4 `lib/create-questionnaire.ts`
 
@@ -104,9 +105,9 @@ calls `redirect()` on a redirect outcome.
   - `AnnotationErreur` above the fields when there is a message (login rule).
   - Titre: `ChampLigne` extended with `type: 'text'`, `required`, `maxLength` 255;
     `aria-invalid` only for `missing-titre` and `invalid`.
-  - Description: new `ChampLignes` — a 3-row textarea, paper background with a 32 px ruled
-    line under each text line (`repeating-linear-gradient`), vertical resize, label
-    « Description (facultatif) ».
+  - Description: new `ChampLignes` — a 3-row textarea, paper background with a 2 px baseline
+    under each 32 px text line (`repeating-linear-gradient`, graphite at rest, ink on focus,
+    scrolling with the text), vertical resize, label « Description (facultatif) ».
   - Visibilité: new `ChoixCases` — `fieldset` + `legend` styled as a field label, two lines on
     the ruling, native radios with `accent-color` ink: « Publique — toute personne ayant le
     lien » (checked by default) and « Privée — uniquement les personnes invitées ».
@@ -135,7 +136,8 @@ calls `redirect()` on a redirect outcome.
 - `Sommaire` titles become `<a href="/questionnaires/<documentId>">` (ink-dark on hover) with a
   `title` attribute carrying the full title.
 - `page.tsx` shows « + Nouveau questionnaire » under the headline for an `auteur` only.
-- The empty state line stays and is followed by the creation link for an `auteur`.
+- The empty state line stays as it is: the creation link under the headline is already on the
+  same screen, so a second one would repeat it.
 
 ### 4.8 Accessibility
 

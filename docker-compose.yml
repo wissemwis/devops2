@@ -136,6 +136,7 @@ services:
       # deliberately literal (not from .env.example, whose
       # NEXT_PUBLIC_API_BASE_URL documents the V1/production backend URL).
       NEXT_PUBLIC_API_BASE_URL: http://localhost:1337
+      STRAPI_URL: http://backend:1337
     depends_on:
       backend:
         condition: service_started

@@ -75,8 +75,16 @@ stays `[]`. Without a JWT the public role has no such action: `403` (`ForbiddenE
 - Response `200`: `{ "data": { "id", "documentId", "titre", "description", "statut",
   "visibilite", "createdAt", "updatedAt", "questions": [ { "id", "documentId", "texte", "type",
   "position", "obligatoire", "options", "image", … }, … ] }, "meta": {} }`, questions in
-  ascending `position`, after `sanitizeOutput` and `transformResponse`. `image` is `null` until
-  T068 makes upload available.
+  ascending `position`, then `transformResponse`. `image` is `null` until T068 makes upload
+  available.
+- Sanitisation: `strapi.contentAPI.sanitize.output(found, strapi.getModel(UID))`, **without**
+  `auth`. The controller's `sanitizeOutput(data, ctx)` passes `auth`, which runs Strapi's
+  `removeRestrictedRelations` visitor: it removes every relation whose target the caller's role
+  cannot `find`, so `questions` would vanish (no role holds `api::question.question.find`, and
+  granting it only to satisfy the sanitiser would leave a live grant waiting for any future core
+  route). Without `auth`, the default output sanitiser still removes private and password
+  fields; the relation check adds nothing here because the controller fixes `populate` itself
+  and `loadForAction` has already checked access.
 
 ### 4.4 Errors
 

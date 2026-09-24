@@ -1,3 +1,5 @@
+import Link from 'next/link';
+
 export default function QuestionnaireIntrouvable() {
   return (
     <>
@@ -8,12 +10,12 @@ export default function QuestionnaireIntrouvable() {
         Ce questionnaire n&apos;existe pas ou ne vous appartient pas.
       </p>
       <p className="leading-[32px]">
-        <a
+        <Link
           href="/questionnaires"
           className="entoure text-encre underline underline-offset-4 transition-colors duration-[120ms] hover:text-encre-sombre"
         >
           Retour à mes questionnaires
-        </a>
+        </Link>
       </p>
     </>
   );

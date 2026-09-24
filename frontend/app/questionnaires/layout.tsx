@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { AnnotationErreur } from '@/components/AnnotationErreur';
 import { Feuille } from '@/components/Feuille';
@@ -13,12 +14,12 @@ export default async function QuestionnairesLayout({ children }: LayoutProps<'/q
       <Feuille marge="Espace auteur">
         <AnnotationErreur id="espace-indisponible">
           {LOGIN_MESSAGES.unavailable}{' '}
-          <a
+          <Link
             href="/questionnaires"
             className="entoure font-bold text-encre underline transition-colors duration-[120ms] hover:text-encre-sombre"
           >
             Réessayer
-          </a>
+          </Link>
         </AnnotationErreur>
       </Feuille>
     );

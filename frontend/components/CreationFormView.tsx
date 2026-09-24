@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import { CREATION_MESSAGES, type CreationFormState, titreInvalide } from '@/lib/creation-state';
 import { AnnotationErreur } from './AnnotationErreur';
 import { ChampLigne } from './ChampLigne';
@@ -54,12 +55,12 @@ export function CreationFormView({ state, action, pending }: CreationFormViewPro
         >
           {pending ? 'Création…' : 'Créer le brouillon'}
         </button>
-        <a
+        <Link
           href="/questionnaires"
           className="entoure text-encre underline underline-offset-4 transition-colors duration-[120ms] hover:text-encre-sombre"
         >
           Annuler
-        </a>
+        </Link>
       </div>
     </form>
   );

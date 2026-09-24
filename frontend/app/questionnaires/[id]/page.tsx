@@ -1,4 +1,5 @@
 import { cookies } from 'next/headers';
+import Link from 'next/link';
 import { notFound, redirect } from 'next/navigation';
 import { AnnotationErreur } from '@/components/AnnotationErreur';
 import { BrouillonView } from '@/components/BrouillonView';
@@ -16,12 +17,12 @@ export default async function BrouillonPage({ params }: PageProps<'/questionnair
     return (
       <AnnotationErreur id="brouillon-erreur">
         {LOGIN_MESSAGES.unavailable}{' '}
-        <a
+        <Link
           href={`/questionnaires/${id}`}
           className="entoure font-bold text-encre underline transition-colors duration-[120ms] hover:text-encre-sombre"
         >
           Réessayer
-        </a>
+        </Link>
       </AnnotationErreur>
     );
   }

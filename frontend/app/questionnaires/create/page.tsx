@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import { currentAuthorGate } from '@/lib/current-author';
 import { CreationForm } from './CreationForm';
 
@@ -17,12 +18,12 @@ export default async function NouveauQuestionnairePage() {
             La création de questionnaires est réservée aux auteurs.
           </p>
           <p className="leading-[32px]">
-            <a
+            <Link
               href="/questionnaires"
               className="entoure text-encre underline underline-offset-4 transition-colors duration-[120ms] hover:text-encre-sombre"
             >
               Retour à mes questionnaires
-            </a>
+            </Link>
           </p>
         </>
       )}

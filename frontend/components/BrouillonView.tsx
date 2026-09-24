@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import type { QuestionnaireLu, QuestionType, Visibilite } from '@/services/questionnaireService';
 import { TamponStatut } from './TamponStatut';
 
@@ -19,12 +20,12 @@ export function BrouillonView({ questionnaire }: { questionnaire: QuestionnaireL
   return (
     <>
       <p className="mt-ligne leading-[32px]">
-        <a
+        <Link
           href="/questionnaires"
           className="entoure text-encre underline underline-offset-4 transition-colors duration-[120ms] hover:text-encre-sombre"
         >
           ← Mes questionnaires
-        </a>
+        </Link>
       </p>
       <h1 className="text-[28px] font-bold leading-[64px] tracking-[-0.02em] break-words">
         {titre}

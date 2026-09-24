@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import type { SommaireState } from '@/services/mesQuestionnaires';
 import { AnnotationErreur } from './AnnotationErreur';
 import { TamponStatut } from './TamponStatut';
@@ -14,12 +15,12 @@ export function Sommaire({ state }: { state: SommaireState }) {
     return (
       <AnnotationErreur id="sommaire-erreur">
         Impossible de charger vos questionnaires.{' '}
-        <a
+        <Link
           href="/questionnaires"
           className="entoure font-bold text-encre underline transition-colors duration-[120ms] hover:text-encre-sombre"
         >
           Réessayer
-        </a>
+        </Link>
       </AnnotationErreur>
     );
   }
